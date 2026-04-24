@@ -17,3 +17,4 @@ D:\git_repo\cstool\DFDTool\DfdToolWpf\obj\Debug\net8.0-windows\refint\DfdToolWpf
 D:\git_repo\cstool\DFDTool\DfdToolWpf\obj\Debug\net8.0-windows\DfdToolWpf.pdb
 D:\git_repo\cstool\DFDTool\DfdToolWpf\obj\Debug\net8.0-windows\DfdToolWpf.genruntimeconfig.cache
 D:\git_repo\cstool\DFDTool\DfdToolWpf\obj\Debug\net8.0-windows\ref\DfdToolWpf.dll
+D:\git_repo\cstool\DFDTool\DfdToolWpf\obj\Debug\net8.0-windows\DfdToolWpf.sourcelink.json
