@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -78,6 +79,7 @@ namespace DfdToolWpf
             if (sfd.ShowDialog() == true)
             {
                 var options = new JsonSerializerOptions { WriteIndented = true };
+                options.Converters.Add(new JsonStringEnumConverter());
                 string json = JsonSerializer.Serialize(ViewModel.GetSaveData(), options);
                 File.WriteAllText(sfd.FileName, json);
             }
@@ -91,7 +93,9 @@ namespace DfdToolWpf
                 try 
                 { 
                     string json = File.ReadAllText(ofd.FileName);
-                    var data = JsonSerializer.Deserialize<DfdSaveData>(json);
+                    var options = new JsonSerializerOptions();
+                    options.Converters.Add(new JsonStringEnumConverter());
+                    var data = JsonSerializer.Deserialize<DfdSaveData>(json, options);
                     if (data != null)
                     {
                         ViewModel.LoadSaveData(data); 

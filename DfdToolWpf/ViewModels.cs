@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -9,7 +9,7 @@ using System.Windows.Media;
 
 namespace DfdToolWpf
 {
-    public enum EditorMode { Process, Entity, DataStore, Arrow, DashEntity, CategoryFrame, ConnectableFrame }
+    public enum EditorMode { Process, Entity, DataStore, Arrow, DashEntity, CategoryFrame, ConnectableFrame, Database }
 
     public class DfdSaveData
     {
@@ -104,7 +104,16 @@ namespace DfdToolWpf
 
         public void AddNode(EditorMode type, double x, double y)
         {
-            Nodes.Add(new NodeViewModel { Type = type, X = x, Y = y, Text = $"要素 {nodeCount++}" });
+            var node = new NodeViewModel { Type = type, X = x, Y = y, Text = $"要素 {nodeCount++}" };
+
+            if (type == EditorMode.Database)
+            {
+                node.Width = 120;
+                node.Height = 80;
+                node.Text = "データベース";
+            }
+
+            Nodes.Add(node);
         }
 
         public void DeleteSelected()
