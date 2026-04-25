@@ -140,7 +140,7 @@
                                 </ItemsControl>
                                 
                                 <Grid Canvas.Left="{Binding MidX}" Canvas.Top="{Binding MidY}" Background="White" MinWidth="60" MinHeight="20" Cursor="Hand" MouseLeftButtonDown="ConnectionLabel_PreviewMouseLeftButtonDown" Panel.ZIndex="5">
-                                    <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -152,7 +152,7 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged">
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
                                         <TextBox.Style>
                                             <Style TargetType="TextBox">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -243,7 +243,7 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
                                                 
-                                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextWrapping="Wrap" TextAlignment="Center">
+                                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
                                                     <TextBox.Style>
                                                         <Style TargetType="TextBox">
                                                             <Setter Property="Visibility" Value="Collapsed"/>

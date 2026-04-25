@@ -489,13 +489,19 @@ namespace DfdToolWpf
         }
 
         private void TextBox_KeyDown(object sender, KeyEventArgs e) 
-        { 
-            if (e.Key == Key.Enter || e.Key == Key.Escape) 
-            { 
-                if (((FrameworkElement)sender).DataContext is NodeViewModel n) n.IsEditing = false; 
-                if (((FrameworkElement)sender).DataContext is ConnectionViewModel c) c.IsEditing = false; 
-                MainCanvas.Focus(); 
-            } 
+        {
+            // Enter は TextBox の改行入力に使う。
+            // 編集終了は Esc または Ctrl+Enter にする。
+            bool finishEditing = e.Key == Key.Escape ||
+                                 (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+
+            if (finishEditing)
+            {
+                if (((FrameworkElement)sender).DataContext is NodeViewModel n) n.IsEditing = false;
+                if (((FrameworkElement)sender).DataContext is ConnectionViewModel c) c.IsEditing = false;
+                MainCanvas.Focus();
+                e.Handled = true;
+            }
         }
 
         private void TextBox_LostFocus(object sender, RoutedEventArgs e) 
