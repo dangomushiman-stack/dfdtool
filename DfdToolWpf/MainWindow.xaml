@@ -153,7 +153,7 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
                                         <TextBox.Style>
                                             <Style TargetType="TextBox">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -252,7 +252,7 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
                                                 
-                                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" KeyDown="TextBox_KeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
+                                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
                                                     <TextBox.Style>
                                                         <Style TargetType="TextBox">
                                                             <Setter Property="Visibility" Value="Collapsed"/>

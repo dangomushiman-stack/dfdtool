@@ -488,14 +488,16 @@ namespace DfdToolWpf
             } 
         }
 
-        private void TextBox_KeyDown(object sender, KeyEventArgs e) 
-        {
-            // Enter は TextBox の改行入力に使う。
-            // 編集終了は Esc または Ctrl+Enter にする。
-            bool finishEditing = e.Key == Key.Escape ||
-                                 (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+        private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e) 
+        { 
+            // Shift + Enter は TextBox 標準の改行入力に任せる。
+            if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                return;
+            }
 
-            if (finishEditing)
+            // Enter は編集終了。Esc も編集終了。
+            if (e.Key == Key.Enter || e.Key == Key.Escape)
             {
                 if (((FrameworkElement)sender).DataContext is NodeViewModel n) n.IsEditing = false;
                 if (((FrameworkElement)sender).DataContext is ConnectionViewModel c) c.IsEditing = false;
