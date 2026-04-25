@@ -26,6 +26,8 @@ namespace DfdToolWpf
         public double Width { get; set; }
         public double Height { get; set; }
         public string Text { get; set; }
+        public string FileFormat { get; set; }
+        public bool IsFileFormatVisible { get; set; }
         public bool? IsDashed { get; set; } 
     }
 
@@ -71,7 +73,8 @@ namespace DfdToolWpf
         private double _width = 100;
         private double _height = 50;
         private string _text;
-        private bool _isSelected, _isEditing, _isDashed;
+        private string _fileFormat = string.Empty;
+        private bool _isSelected, _isEditing, _isDashed, _isFileFormatVisible;
 
         public EditorMode Type { get; set; }
         
@@ -80,6 +83,8 @@ namespace DfdToolWpf
         public double Width { get => _width; set { if (value > 0) _width = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterX)); } }
         public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); } }
         public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
+        public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
+        public bool IsFileFormatVisible { get => _isFileFormatVisible; set { _isFileFormatVisible = value; OnPropertyChanged(); } }
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
         public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
         public bool IsDashed { get => _isDashed; set { _isDashed = value; OnPropertyChanged(); } }
@@ -123,6 +128,8 @@ namespace DfdToolWpf
                 node.Width = 120;
                 node.Height = 90;
                 node.Text = "文書";
+                node.FileFormat = ".txt";
+                node.IsFileFormatVisible = false;
             }
 
             Nodes.Add(node);
@@ -166,7 +173,7 @@ namespace DfdToolWpf
             
             foreach (var n in Nodes) 
             {
-                data.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, IsDashed = n.IsDashed });
+                data.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed });
             }
             
             foreach (var c in Connections) 
@@ -193,7 +200,7 @@ namespace DfdToolWpf
             {
                 var node = new NodeViewModel 
                 { 
-                    Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width > 0 ? n.Width : 100, Height = n.Height > 0 ? n.Height : 50, Text = n.Text,
+                    Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width > 0 ? n.Width : 100, Height = n.Height > 0 ? n.Height : 50, Text = n.Text, FileFormat = n.FileFormat ?? string.Empty, IsFileFormatVisible = n.IsFileFormatVisible,
                     IsDashed = n.IsDashed ?? (n.Type == EditorMode.CategoryFrame) 
                 };
                 Nodes.Add(node); 

@@ -192,6 +192,11 @@
                                                 <ContextMenu>
                                                     <MenuItem Header="実線にする" Click="MenuItem_Solid_Click"/>
                                                     <MenuItem Header="点線にする" Click="MenuItem_Dashed_Click"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="ファイル形式を表示"
+                                                              IsCheckable="True"
+                                                              IsChecked="{Binding PlacementTarget.DataContext.IsFileFormatVisible, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=TwoWay}"
+                                                              Click="MenuItem_FileFormatVisible_Click"/>
                                                 </ContextMenu>
                                             </Grid.ContextMenu>
 
@@ -266,6 +271,29 @@
                                                 </TextBox>
                                             </Grid>
                                             
+
+                                            <!-- シンボル外側の左上に表示する小さなファイル形式入力欄（例: .txt, .csv, .json） -->
+                                            <TextBox x:Name="FileFormatBox"
+                                                     Text="{Binding FileFormat, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                     Width="46"
+                                                     Height="18"
+                                                     HorizontalAlignment="Left"
+                                                     VerticalAlignment="Top"
+                                                     Margin="0,-22,0,0"
+                                                     Padding="2,0"
+                                                     FontSize="10"
+                                                     FontWeight="Bold"
+                                                     TextAlignment="Center"
+                                                     VerticalContentAlignment="Center"
+                                                     Background="#FFFFF4"
+                                                     BorderBrush="#777"
+                                                     BorderThickness="1"
+                                                     Foreground="#333"
+                                                     ToolTip="ファイル形式（例: .txt, .csv, .json）"
+                                                     PreviewKeyDown="FileFormatTextBox_PreviewKeyDown"
+                                                     LostFocus="FileFormatTextBox_LostFocus"
+                                                     Panel.ZIndex="30"
+                                                     Visibility="Collapsed" />
                                             <Thumb x:Name="ResizeThumb" Width="15" Height="15" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" Visibility="Collapsed">
                                                 <Thumb.Template>
                                                     <ControlTemplate>
@@ -313,6 +341,11 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Type}" Value="Document">
                                                 <Setter TargetName="ShapeDocument" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+
+                                            <!-- 右クリックメニューの「ファイル形式を表示」がONのときだけ表示 -->
+                                            <DataTrigger Binding="{Binding IsFileFormatVisible}" Value="True">
+                                                <Setter TargetName="FileFormatBox" Property="Visibility" Value="Visible" />
                                             </DataTrigger>
                                             
                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">

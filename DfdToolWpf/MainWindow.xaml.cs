@@ -281,9 +281,20 @@ namespace DfdToolWpf
         {
             if (sender is Grid grid && grid.DataContext is NodeViewModel node)
             {
-                if (node.Type != EditorMode.CategoryFrame && node.Type != EditorMode.ConnectableFrame)
+                ViewModel.ResetSelection();
+                node.IsSelected = true;
+            }
+        }
+
+        private void MenuItem_FileFormatVisible_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)
+            {
+                node.IsFileFormatVisible = item.IsChecked;
+
+                if (node.IsFileFormatVisible && string.IsNullOrWhiteSpace(node.FileFormat))
                 {
-                    e.Handled = true; 
+                    node.FileFormat = ".txt";
                 }
             }
         }
@@ -477,6 +488,22 @@ namespace DfdToolWpf
                 conn.IsEditing = true; 
                 e.Handled = true; 
             }
+        }
+
+
+        private void FileFormatTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Escape)
+            {
+                Keyboard.ClearFocus();
+                MainCanvas.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void FileFormatTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // ファイル形式欄は常時編集可能にするため、通常テキストの編集状態は変更しない。
         }
 
         private void TextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e) 
