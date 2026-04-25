@@ -170,6 +170,9 @@ namespace DfdToolWpf
                 case EditorMode.Database:
                     return GetDatabaseEdgePoint(node, towardPoint);
 
+                case EditorMode.HorizontalDatabase:
+                    return GetHorizontalDatabaseEdgePoint(node, towardPoint);
+
                 default:
                     return GetRectangleEdgePoint(node, towardPoint);
             }
@@ -249,6 +252,46 @@ namespace DfdToolWpf
             }
 
             return GetEllipsePoint(cx, bottomEllipseCy, rx, ry, towardPoint);
+        }
+
+        private Point GetHorizontalDatabaseEdgePoint(NodeViewModel node, Point towardPoint)
+        {
+            // MainWindow.xaml の ShapeHorizontalDatabase は 120x80 の Viewbox 内に、
+            // 左楕円中心X=18、右楕円中心X=102、Y=10..70 として描いている。
+            // その比率に合わせて接続点を計算する。
+            double leftEllipseCx = node.X + node.Width * (18.0 / 120.0);
+            double rightEllipseCx = node.X + node.Width * (102.0 / 120.0);
+            double cx = (leftEllipseCx + rightEllipseCx) / 2.0;
+
+            double top = node.Y + node.Height * (10.0 / 80.0);
+            double bottom = node.Y + node.Height * (70.0 / 80.0);
+            double cy = node.Y + node.Height * (40.0 / 80.0);
+
+            double rx = node.Width * (10.0 / 120.0);
+            double ry = node.Height * (30.0 / 80.0);
+
+            double dx = towardPoint.X - cx;
+            double dy = towardPoint.Y - cy;
+
+            if (Math.Abs(dx) < 0.0001 && Math.Abs(dy) < 0.0001)
+            {
+                return new Point(cx, cy);
+            }
+
+            // 左右方向から接続する場合は、左右の楕円外周に接続する。
+            if (Math.Abs(dx) >= Math.Abs(dy))
+            {
+                double ellipseCx = dx < 0 ? leftEllipseCx : rightEllipseCx;
+                return GetEllipsePoint(ellipseCx, cy, rx, ry, towardPoint);
+            }
+
+            // 上下方向から接続する場合は、円柱の上下の直線部分に接続する。
+            double y = dy < 0 ? top : bottom;
+            double t = (y - cy) / dy;
+            double x = cx + dx * t;
+
+            x = Math.Max(leftEllipseCx, Math.Min(rightEllipseCx, x));
+            return new Point(x, y);
         }
 
         private Point GetEllipsePoint(double cx, double cy, double rx, double ry, Point towardPoint)
