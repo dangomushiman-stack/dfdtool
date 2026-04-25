@@ -300,13 +300,14 @@ namespace DfdToolWpf
         private Point GetDocumentEdgePoint(NodeViewModel node, Point towardPoint)
         {
             // MainWindow.xaml の ShapeDocument は 120x80 の Viewbox 内に、
-            // 左上=(10,10)、右上=(110,10)、右下付近=(110,58)、左下付近=(10,66) として描いている。
+            // 左上=(0,0)、右上=(120,0) として描いている。
+            // これにより、文書シンボルの上2角はノードの理論的な枠と一致する。
             // 下辺は波線なので、下方向からの接続だけ波線位置に合わせる。
-            double left = node.X + node.Width * (10.0 / 120.0);
-            double right = node.X + node.Width * (110.0 / 120.0);
-            double top = node.Y + node.Height * (10.0 / 80.0);
-            double cx = node.X + node.Width * (60.0 / 120.0);
-            double cy = node.Y + node.Height * (40.0 / 80.0);
+            double left = node.X;
+            double right = node.X + node.Width;
+            double top = node.Y;
+            double cx = node.CenterX;
+            double cy = node.CenterY;
 
             double dx = towardPoint.X - cx;
             double dy = towardPoint.Y - cy;
@@ -348,24 +349,24 @@ namespace DfdToolWpf
 
         private double GetDocumentBottomY(NodeViewModel node, double x)
         {
-            // 画像の下辺に近い、なだらかな波線を二次関数の組み合わせで近似する。
-            double left = node.X + node.Width * (10.0 / 120.0);
-            double right = node.X + node.Width * (110.0 / 120.0);
+            // MainWindow.xaml の文書シンボル下辺に近い、なだらかな波線を二次関数の組み合わせで近似する。
+            double left = node.X;
+            double right = node.X + node.Width;
             double u = (x - left) / (right - left);
             u = Math.Max(0.0, Math.Min(1.0, u));
 
-            // 左端66、中央付近72、右端58に近い比率。
+            // 左端68、中央付近70～80、右端60に近い比率。
             // XAML の Viewbox 高さ80に合わせてから、実ノード高さへスケールする。
             double localY;
-            if (u < 0.46)
+            if (u < 0.5)
             {
-                double t = u / 0.46;
-                localY = QuadraticBezier(66.0, 76.0, 68.0, t);
+                double t = u / 0.5;
+                localY = QuadraticBezier(68.0, 80.0, 70.0, t);
             }
             else
             {
-                double t = (u - 0.46) / 0.54;
-                localY = QuadraticBezier(68.0, 58.0, 58.0, t);
+                double t = (u - 0.5) / 0.5;
+                localY = QuadraticBezier(70.0, 62.0, 60.0, t);
             }
 
             return node.Y + node.Height * (localY / 80.0);

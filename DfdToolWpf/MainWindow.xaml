@@ -230,7 +230,8 @@
 
                                             <Viewbox x:Name="ShapeDocument" Stretch="Fill" Visibility="Collapsed">
                                                 <Canvas Width="120" Height="80">
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 10,10 L 110,10 L 110,58 C 88,56 73,60 56,68 C 38,77 23,70 10,66 Z"/>
+                                                    <!-- Document shape: top corners are aligned to node logical bounds: (0,0) and (120,0). -->
+                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 0,0 L 120,0 L 120,60 C 96,58 78,62 60,70 C 40,80 20,72 0,68 Z"/>
                                                 </Canvas>
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
