@@ -173,6 +173,9 @@ namespace DfdToolWpf
                 case EditorMode.HorizontalDatabase:
                     return GetHorizontalDatabaseEdgePoint(node, towardPoint);
 
+                case EditorMode.Document:
+                    return GetDocumentEdgePoint(node, towardPoint);
+
                 default:
                     return GetRectangleEdgePoint(node, towardPoint);
             }
@@ -293,6 +296,87 @@ namespace DfdToolWpf
             x = Math.Max(leftEllipseCx, Math.Min(rightEllipseCx, x));
             return new Point(x, y);
         }
+
+        private Point GetDocumentEdgePoint(NodeViewModel node, Point towardPoint)
+        {
+            // MainWindow.xaml の ShapeDocument は 120x80 の Viewbox 内に、
+            // 左上=(10,10)、右上=(110,10)、右下付近=(110,58)、左下付近=(10,66) として描いている。
+            // 下辺は波線なので、下方向からの接続だけ波線位置に合わせる。
+            double left = node.X + node.Width * (10.0 / 120.0);
+            double right = node.X + node.Width * (110.0 / 120.0);
+            double top = node.Y + node.Height * (10.0 / 80.0);
+            double cx = node.X + node.Width * (60.0 / 120.0);
+            double cy = node.Y + node.Height * (40.0 / 80.0);
+
+            double dx = towardPoint.X - cx;
+            double dy = towardPoint.Y - cy;
+
+            if (Math.Abs(dx) < 0.0001 && Math.Abs(dy) < 0.0001)
+            {
+                return new Point(cx, cy);
+            }
+
+            // 上方向は上辺に接続する。
+            if (dy < 0 && Math.Abs(dy) >= Math.Abs(dx))
+            {
+                double t = (top - cy) / dy;
+                double x = cx + dx * t;
+                x = Math.Max(left, Math.Min(right, x));
+                return new Point(x, top);
+            }
+
+            // 左右方向は縦辺に接続する。
+            if (Math.Abs(dx) > Math.Abs(dy))
+            {
+                double x = dx < 0 ? left : right;
+                double t = (x - cx) / dx;
+                double y = cy + dy * t;
+
+                double bottomAtSide = GetDocumentBottomY(node, x);
+                y = Math.Max(top, Math.Min(bottomAtSide, y));
+                return new Point(x, y);
+            }
+
+            // 下方向は波線の下辺に接続する。
+            double approxBottom = GetDocumentBottomY(node, cx);
+            double bottomT = (approxBottom - cy) / dy;
+            double bottomX = cx + dx * bottomT;
+            bottomX = Math.Max(left, Math.Min(right, bottomX));
+
+            return new Point(bottomX, GetDocumentBottomY(node, bottomX));
+        }
+
+        private double GetDocumentBottomY(NodeViewModel node, double x)
+        {
+            // 画像の下辺に近い、なだらかな波線を二次関数の組み合わせで近似する。
+            double left = node.X + node.Width * (10.0 / 120.0);
+            double right = node.X + node.Width * (110.0 / 120.0);
+            double u = (x - left) / (right - left);
+            u = Math.Max(0.0, Math.Min(1.0, u));
+
+            // 左端66、中央付近72、右端58に近い比率。
+            // XAML の Viewbox 高さ80に合わせてから、実ノード高さへスケールする。
+            double localY;
+            if (u < 0.46)
+            {
+                double t = u / 0.46;
+                localY = QuadraticBezier(66.0, 76.0, 68.0, t);
+            }
+            else
+            {
+                double t = (u - 0.46) / 0.54;
+                localY = QuadraticBezier(68.0, 58.0, 58.0, t);
+            }
+
+            return node.Y + node.Height * (localY / 80.0);
+        }
+
+        private double QuadraticBezier(double p0, double p1, double p2, double t)
+        {
+            double mt = 1.0 - t;
+            return mt * mt * p0 + 2.0 * mt * t * p1 + t * t * p2;
+        }
+
 
         private Point GetEllipsePoint(double cx, double cy, double rx, double ry, Point towardPoint)
         {

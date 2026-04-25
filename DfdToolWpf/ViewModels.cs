@@ -9,7 +9,7 @@ using System.Windows.Media;
 
 namespace DfdToolWpf
 {
-    public enum EditorMode { Process, Entity, DataStore, Arrow, DashEntity, CategoryFrame, ConnectableFrame, Database, HorizontalDatabase }
+    public enum EditorMode { Process, Entity, DataStore, Arrow, DashEntity, CategoryFrame, ConnectableFrame, Database, HorizontalDatabase, Document }
 
     public class DfdSaveData
     {
@@ -117,6 +117,12 @@ namespace DfdToolWpf
                 node.Width = 140;
                 node.Height = 80;
                 node.Text = "横向きDB";
+            }
+            else if (type == EditorMode.Document)
+            {
+                node.Width = 120;
+                node.Height = 90;
+                node.Text = "文書";
             }
 
             Nodes.Add(node);
