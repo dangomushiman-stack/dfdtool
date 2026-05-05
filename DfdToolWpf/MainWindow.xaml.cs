@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -58,10 +58,46 @@ namespace DfdToolWpf
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Delete && !ViewModel.Nodes.Any(n => n.IsEditing) && !ViewModel.Connections.Any(c => c.IsEditing))
+            if (IsTextEditingNow()) return;
+
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
+            {
+                if (!ViewModel.CopySelectedNode())
+                {
+                    MessageBox.Show("コピーするシンボルを選択してください。", "シンボルコピー");
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.V)
+            {
+                if (!ViewModel.PasteCopiedNode())
+                {
+                    MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Delete)
             {
                 ViewModel.DeleteSelected();
+                e.Handled = true;
             }
+        }
+
+        private bool IsTextEditingNow()
+        {
+            if (Keyboard.FocusedElement is TextBox) return true;
+
+            bool nodeOrConnectionEditing =
+                (ViewModel.Nodes?.Any(n => n.IsEditing) ?? false) ||
+                (ViewModel.Connections?.Any(c => c.IsEditing) ?? false);
+
+            bool sheetNameEditing = ViewModel.Sheets.Any(s => s.IsNameEditing);
+
+            return nodeOrConnectionEditing || sheetNameEditing;
         }
 
         private void BtnClear_Click(object sender, RoutedEventArgs e)
@@ -71,6 +107,80 @@ namespace DfdToolWpf
             MainScale.ScaleY = 1;
             MainTranslate.X = 0; 
             MainTranslate.Y = 0;
+        }
+
+        private void BtnAddSheet_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.AddSheet();
+            MainScale.ScaleX = 1;
+            MainScale.ScaleY = 1;
+            MainTranslate.X = 0;
+            MainTranslate.Y = 0;
+        }
+
+        private void BtnDeleteSheet_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.DeleteCurrentSheet();
+            MainScale.ScaleX = 1;
+            MainScale.ScaleY = 1;
+            MainTranslate.X = 0;
+            MainTranslate.Y = 0;
+        }
+
+        private void SheetTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source == sender)
+            {
+                ViewModel.ResetSelection();
+                MainScale.ScaleX = 1;
+                MainScale.ScaleY = 1;
+                MainTranslate.X = 0;
+                MainTranslate.Y = 0;
+                MainCanvas.Focus();
+            }
+        }
+
+        private void SheetNameTextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // シングルクリックはTabControl本来のシート切替に任せる。
+            // ダブルクリック時だけシート名編集に入る。
+            if (e.ClickCount == 2 && ((FrameworkElement)sender).DataContext is DiagramSheetViewModel sheet)
+            {
+                sheet.IsNameEditing = true;
+                e.Handled = true;
+            }
+        }
+
+        private void SheetNameTextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (sender is TextBox tb && tb.IsVisible)
+            {
+                tb.Focus();
+                tb.SelectAll();
+            }
+        }
+
+        private void SheetNameTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Escape)
+            {
+                if (((FrameworkElement)sender).DataContext is DiagramSheetViewModel sheet)
+                {
+                    sheet.IsNameEditing = false;
+                }
+
+                Keyboard.ClearFocus();
+                MainCanvas.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void SheetNameTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (((FrameworkElement)sender).DataContext is DiagramSheetViewModel sheet)
+            {
+                sheet.IsNameEditing = false;
+            }
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -105,6 +215,62 @@ namespace DfdToolWpf
                 {
                     MessageBox.Show("読み込みに失敗しました。\n" + ex.Message);
                 }
+            }
+        }
+
+        private void BtnImportJsonAsSheet_Click(object sender, RoutedEventArgs e)
+        {
+            var ofd = new OpenFileDialog
+            {
+                Filter = "DFD JSON File|*.json",
+                Multiselect = true,
+                Title = "シートとして取り込むJSONファイルを選択"
+            };
+
+            if (ofd.ShowDialog() != true) return;
+
+            int importedCount = 0;
+            var failedFiles = new System.Collections.Generic.List<string>();
+
+            foreach (string fileName in ofd.FileNames)
+            {
+                try
+                {
+                    string json = File.ReadAllText(fileName);
+                    var options = new JsonSerializerOptions();
+                    options.Converters.Add(new JsonStringEnumConverter());
+                    var data = JsonSerializer.Deserialize<DfdSaveData>(json, options);
+
+                    if (data == null)
+                    {
+                        failedFiles.Add(System.IO.Path.GetFileName(fileName));
+                        continue;
+                    }
+
+                    importedCount += ViewModel.ImportSaveDataAsSheets(data, System.IO.Path.GetFileNameWithoutExtension(fileName));
+                }
+                catch
+                {
+                    failedFiles.Add(System.IO.Path.GetFileName(fileName));
+                }
+            }
+
+            if (importedCount > 0)
+            {
+                MainScale.ScaleX = 1;
+                MainScale.ScaleY = 1;
+                MainTranslate.X = 0;
+                MainTranslate.Y = 0;
+                MainCanvas.Focus();
+            }
+
+            if (failedFiles.Count > 0)
+            {
+                MessageBox.Show($"{importedCount} 枚のシートを取り込みました。\n取り込めなかったファイル: {string.Join(", ", failedFiles)}", "JSON取込");
+            }
+            else
+            {
+                MessageBox.Show($"{importedCount} 枚のシートを取り込みました。", "JSON取込");
             }
         }
 
@@ -286,6 +452,30 @@ namespace DfdToolWpf
             }
         }
 
+        private void MenuItem_CopySymbol_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ViewModel.CopySelectedNode())
+            {
+                MessageBox.Show("コピーするシンボルを選択してください。", "シンボルコピー");
+            }
+        }
+
+        private void MenuItem_PasteSymbol_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ViewModel.PasteCopiedNode())
+            {
+                MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
+            }
+        }
+
+        private void MenuItem_DuplicateSymbol_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ViewModel.DuplicateSelectedNode())
+            {
+                MessageBox.Show("複製するシンボルを選択してください。", "シンボルコピー");
+            }
+        }
+
         private void MenuItem_FileFormatVisible_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)
@@ -297,6 +487,24 @@ namespace DfdToolWpf
                     node.FileFormat = ".txt";
                 }
             }
+        }
+
+        private void MenuItem_SearchSameSymbolText_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)
+            {
+                int hitSheetCount = ViewModel.MarkSheetsContainingSameNode(node);
+
+                if (hitSheetCount == 0)
+                {
+                    MessageBox.Show("他のシートには、同じシンボルと同じ文字列のオブジェクトは見つかりませんでした。", "検索結果");
+                }
+            }
+        }
+
+        private void MenuItem_ClearSearchMarks_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ClearSheetSearchMarks();
         }
 
         private void MenuItem_Solid_Click(object sender, RoutedEventArgs e)
