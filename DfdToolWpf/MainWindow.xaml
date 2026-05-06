@@ -294,8 +294,8 @@
                                     <ControlTemplate>
                                         <Canvas Width="{Binding Width}" Height="{Binding Height}" Background="{x:Null}">
                                             <Path Data="{Binding TailPathLocalData}"
-                                                  Fill="#FFF4A8"
-                                                  Stroke="#D6A600"
+                                                  Fill="{Binding FillColor}"
+                                                  Stroke="{Binding StrokeColor}"
                                                   StrokeThickness="2"
                                                   Visibility="{Binding StickySpeechBubbleVisibility}"
                                                   IsHitTestVisible="False"
@@ -326,6 +326,25 @@
                                                     <MenuItem Header="実線にする" Click="MenuItem_Solid_Click"/>
                                                     <MenuItem Header="点線にする" Click="MenuItem_Dashed_Click"/>
                                                     <Separator/>
+                                                    <MenuItem Header="枠の色">
+                                                        <MenuItem Header="青" Tag="#4A90E2" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="黒" Tag="Black" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="灰" Tag="Gray" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="赤" Tag="#D9534F" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="緑" Tag="#5CB85C" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                        <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetNodeStrokeColor_Click"/>
+                                                    </MenuItem>
+                                                    <MenuItem Header="塗りつぶしの色">
+                                                        <MenuItem Header="白" Tag="White" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="透明" Tag="Transparent" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="薄い青" Tag="#E2F0FF" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="薄い緑" Tag="#E0FFE0" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="薄い黄" Tag="#FFF4A8" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="薄い赤" Tag="#FFE0E0" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                        <MenuItem Header="薄い紫" Tag="#EEE6FF" Click="MenuItem_SetNodeFillColor_Click"/>
+                                                    </MenuItem>
+                                                    <Separator/>
                                                     <MenuItem Header="付箋に吹き出しを付ける" Click="MenuItem_MakeStickySpeechBubble_Click"/>
                                                     <MenuItem Header="通常の付箋に戻す" Click="MenuItem_MakeStickyNote_Click"/>
                                                     <Separator/>
@@ -339,35 +358,35 @@
                                                 </ContextMenu>
                                             </Grid.ContextMenu>
 
-                                            <Ellipse x:Name="ShapeProcess" Fill="White" Stroke="#4A90E2" StrokeThickness="2" Visibility="Collapsed">
+                                            <Ellipse x:Name="ShapeProcess" Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Visibility="Collapsed">
                                                 <Ellipse.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Ellipse.Effect>
                                             </Ellipse>
                                             
-                                            <Rectangle x:Name="ShapeEntity" Fill="White" Stroke="#4A90E2" StrokeThickness="2" Visibility="Collapsed">
+                                            <Rectangle x:Name="ShapeEntity" Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Visibility="Collapsed">
                                                 <Rectangle.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Rectangle.Effect>
                                             </Rectangle>
                                             
-                                            <Rectangle x:Name="ShapeFrame" Fill="{x:Null}" Stroke="Gray" StrokeThickness="1" Visibility="Collapsed" />
-                                            <Rectangle x:Name="ShapeConnectableFrame" Fill="{x:Null}" Stroke="#4A90E2" StrokeThickness="2" Visibility="Collapsed" />
+                                            <Rectangle x:Name="ShapeFrame" Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="1" Visibility="Collapsed" />
+                                            <Rectangle x:Name="ShapeConnectableFrame" Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Visibility="Collapsed" />
                                             
-                                            <Border x:Name="ShapeDataStore" Background="White" BorderBrush="#4A90E2" BorderThickness="0,2,0,2" Visibility="Collapsed">
+                                            <Border x:Name="ShapeDataStore" Background="{Binding FillColor}" BorderBrush="{Binding StrokeColor}" BorderThickness="0,2,0,2" Visibility="Collapsed">
                                                 <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Border.Effect>
                                             </Border>
 
                                             <Viewbox x:Name="ShapeDatabase" Stretch="Fill" Visibility="Collapsed">
                                                 <Canvas Width="120" Height="80">
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 10,18 C 10,8 110,8 110,18 L 110,62 C 110,72 10,72 10,62 Z"/>
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 10,18 C 10,28 110,28 110,18 C 110,8 10,8 10,18 Z"/>
-                                                    <Path Fill="Transparent" Stroke="#4A90E2" StrokeThickness="2" Data="M 10,62 C 10,72 110,72 110,62"/>
+                                                    <Path Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 10,18 C 10,8 110,8 110,18 L 110,62 C 110,72 10,72 10,62 Z"/>
+                                                    <Path Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 10,18 C 10,28 110,28 110,18 C 110,8 10,8 10,18 Z"/>
+                                                    <Path Fill="Transparent" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 10,62 C 10,72 110,72 110,62"/>
                                                 </Canvas>
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
 
                                             <Viewbox x:Name="ShapeHorizontalDatabase" Stretch="Fill" Visibility="Collapsed">
                                                 <Canvas Width="120" Height="80">
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 18,10 C 8,10 8,70 18,70 L 102,70 C 112,70 112,10 102,10 Z"/>
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 18,10 C 28,10 28,70 18,70 C 8,70 8,10 18,10 Z"/>
-                                                    <Path Fill="Transparent" Stroke="#4A90E2" StrokeThickness="2" Data="M 102,10 C 112,10 112,70 102,70"/>
+                                                    <Path Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 18,10 C 8,10 8,70 18,70 L 102,70 C 112,70 112,10 102,10 Z"/>
+                                                    <Path Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 18,10 C 28,10 28,70 18,70 C 8,70 8,10 18,10 Z"/>
+                                                    <Path Fill="Transparent" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 102,10 C 112,10 112,70 102,70"/>
                                                 </Canvas>
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
@@ -375,16 +394,16 @@
                                             <Viewbox x:Name="ShapeDocument" Stretch="Fill" Visibility="Collapsed">
                                                 <Canvas Width="120" Height="80">
                                                     <!-- Document shape: top corners are aligned to node logical bounds: (0,0) and (120,0). -->
-                                                    <Path Fill="White" Stroke="#4A90E2" StrokeThickness="2" Data="M 0,0 L 120,0 L 120,60 C 96,58 78,62 60,70 C 40,80 20,72 0,68 Z"/>
+                                                    <Path Fill="{Binding FillColor}" Stroke="{Binding StrokeColor}" StrokeThickness="2" Data="M 0,0 L 120,0 L 120,60 C 96,58 78,62 60,70 C 40,80 20,72 0,68 Z"/>
                                                 </Canvas>
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
 
-                                            <Border x:Name="ShapeStickyNote" Background="#FFF4A8" BorderBrush="#D6A600" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
+                                            <Border x:Name="ShapeStickyNote" Background="{Binding FillColor}" BorderBrush="{Binding StrokeColor}" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
                                                 <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
                                             </Border>
 
-                                            <Border x:Name="ShapeStickySpeechBubble" Background="#FFF4A8" BorderBrush="#D6A600" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
+                                            <Border x:Name="ShapeStickySpeechBubble" Background="{Binding FillColor}" BorderBrush="{Binding StrokeColor}" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
                                                 <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
                                             </Border>
                                             

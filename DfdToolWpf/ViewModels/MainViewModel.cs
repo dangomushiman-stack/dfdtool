@@ -199,7 +199,9 @@ namespace DfdToolWpf
                     IsFileFormatVisible = node.IsFileFormatVisible,
                     IsDashed = node.IsDashed,
                     TailTargetX = node.TailTargetX,
-                    TailTargetY = node.TailTargetY
+                    TailTargetY = node.TailTargetY,
+                    StrokeColor = node.StrokeColor,
+                    FillColor = node.FillColor
                 };
             }
     
@@ -219,6 +221,8 @@ namespace DfdToolWpf
                     IsDashed = data.IsDashed ?? (data.Type == EditorMode.CategoryFrame),
                     TailTargetX = (data.TailTargetX ?? 0) + offsetX,
                     TailTargetY = (data.TailTargetY ?? 0) + offsetY,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? GetDefaultStrokeColor(data.Type) : data.StrokeColor,
+                    FillColor = string.IsNullOrWhiteSpace(data.FillColor) ? GetDefaultFillColor(data.Type) : data.FillColor,
                     IsSelected = false,
                     IsEditing = false
                 };
@@ -227,11 +231,40 @@ namespace DfdToolWpf
                 return node;
             }
     
+            private string GetDefaultStrokeColor(EditorMode type)
+            {
+                switch (type)
+                {
+                    case EditorMode.CategoryFrame:
+                        return "Gray";
+                    case EditorMode.StickyNote:
+                    case EditorMode.StickySpeechBubble:
+                        return "#D6A600";
+                    default:
+                        return "#4A90E2";
+                }
+            }
+
+            private string GetDefaultFillColor(EditorMode type)
+            {
+                switch (type)
+                {
+                    case EditorMode.CategoryFrame:
+                    case EditorMode.ConnectableFrame:
+                        return "Transparent";
+                    case EditorMode.StickyNote:
+                    case EditorMode.StickySpeechBubble:
+                        return "#FFF4A8";
+                    default:
+                        return "White";
+                }
+            }
+
             public void AddNode(EditorMode type, double x, double y)
             {
                 if (SelectedSheet == null) AddSheet("Sheet1");
     
-                var node = new NodeViewModel { Type = type, X = x, Y = y, Text = $"要素 {nodeCount++}" };
+                var node = new NodeViewModel { Type = type, X = x, Y = y, Text = $"要素 {nodeCount++}", StrokeColor = GetDefaultStrokeColor(type), FillColor = GetDefaultFillColor(type) };
     
                 if (type == EditorMode.Database)
                 {
@@ -336,7 +369,7 @@ namespace DfdToolWpf
                 
                 foreach (var n in sheet.Nodes) 
                 {
-                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY });
+                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor });
                 }
                 
                 foreach (var c in sheet.Connections) 
@@ -448,7 +481,9 @@ namespace DfdToolWpf
                         IsFileFormatVisible = n.IsFileFormatVisible,
                         IsDashed = n.IsDashed ?? (n.Type == EditorMode.CategoryFrame),
                         TailTargetX = n.TailTargetX ?? 0,
-                        TailTargetY = n.TailTargetY ?? 0
+                        TailTargetY = n.TailTargetY ?? 0,
+                        StrokeColor = string.IsNullOrWhiteSpace(n.StrokeColor) ? GetDefaultStrokeColor(n.Type) : n.StrokeColor,
+                        FillColor = string.IsNullOrWhiteSpace(n.FillColor) ? GetDefaultFillColor(n.Type) : n.FillColor
                     };
                     if (node.Type == EditorMode.StickySpeechBubble) node.InitializeTailTargetIfNeeded();
                     sheet.Nodes.Add(node); 

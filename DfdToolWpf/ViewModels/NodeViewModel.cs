@@ -17,6 +17,8 @@ namespace DfdToolWpf
             private double _height = 50;
             private string _text;
             private string _fileFormat = string.Empty;
+            private string _strokeColor = "#4A90E2";
+            private string _fillColor = "White";
             private bool _isSelected, _isEditing, _isDashed, _isFileFormatVisible;
             private double _tailTargetX;
             private double _tailTargetY;
@@ -51,6 +53,8 @@ namespace DfdToolWpf
             public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
             public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
             public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
+            public string StrokeColor { get => _strokeColor; set { _strokeColor = string.IsNullOrWhiteSpace(value) ? "#4A90E2" : value; OnPropertyChanged(); } }
+            public string FillColor { get => _fillColor; set { _fillColor = string.IsNullOrWhiteSpace(value) ? "White" : value; OnPropertyChanged(); } }
             public bool IsFileFormatVisible { get => _isFileFormatVisible; set { _isFileFormatVisible = value; OnPropertyChanged(); } }
             public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); OnPropertyChanged(nameof(TailHandleVisibility)); } }
             public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }

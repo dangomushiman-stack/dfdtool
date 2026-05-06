@@ -20,6 +20,8 @@ namespace DfdToolWpf
             public string Text { get; set; }
             public string FileFormat { get; set; }
             public bool IsFileFormatVisible { get; set; }
+            public string StrokeColor { get; set; }
+            public string FillColor { get; set; }
             public bool? IsDashed { get; set; }
             public double? TailTargetX { get; set; }
             public double? TailTargetY { get; set; }

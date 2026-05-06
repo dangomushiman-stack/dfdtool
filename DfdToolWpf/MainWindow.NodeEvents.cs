@@ -142,6 +142,46 @@ namespace DfdToolWpf
             }
         }
 
+
+        private NodeViewModel GetNodeFromContextMenuItem(MenuItem item)
+        {
+            if (item?.DataContext is NodeViewModel nodeFromDataContext)
+            {
+                return nodeFromDataContext;
+            }
+
+            ItemsControl current = item;
+            while (current != null)
+            {
+                if (current is ContextMenu contextMenu && contextMenu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)
+                {
+                    return node;
+                }
+
+                current = ItemsControl.ItemsControlFromItemContainer(current);
+            }
+
+            return null;
+        }
+
+        private void MenuItem_SetNodeStrokeColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Tag is string color)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node != null) node.StrokeColor = color;
+            }
+        }
+
+        private void MenuItem_SetNodeFillColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Tag is string color)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node != null) node.FillColor = color;
+            }
+        }
+
         private void MenuItem_SearchSameSymbolText_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)

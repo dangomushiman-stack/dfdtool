@@ -36,7 +36,9 @@ namespace DfdToolWpf
                             Width = 300, 
                             Height = 200, 
                             Text = ViewModel.CurrentMode == EditorMode.CategoryFrame ? "カテゴリ枠" : "システム枠",
-                            IsDashed = ViewModel.CurrentMode == EditorMode.CategoryFrame 
+                            IsDashed = ViewModel.CurrentMode == EditorMode.CategoryFrame,
+                            StrokeColor = ViewModel.CurrentMode == EditorMode.CategoryFrame ? "Gray" : "#4A90E2",
+                            FillColor = "Transparent"
                         });
                     } 
                     else 
