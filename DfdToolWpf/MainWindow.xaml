@@ -15,6 +15,8 @@
             <RadioButton Content="DB" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Database" />
             <RadioButton Content="横DB" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="HorizontalDatabase" />
             <RadioButton Content="文書" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Document" />
+            <RadioButton Content="付箋" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="StickyNote" Background="#FFF4A8" />
+            <RadioButton Content="吹出付箋" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="StickySpeechBubble" Background="#FFF4A8" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <RadioButton Content="↗️ 矢印" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Arrow" Background="#DDF" />
             <Button Content="🗑️ 削除" Margin="5" Padding="10,0" Click="BtnDelete_Click" Foreground="DarkRed" />
@@ -25,11 +27,9 @@
             <Button Content="📂 読込" Margin="5" Padding="10,0" Click="BtnLoad_Click" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <Button Content="🖼️ 画像出力" Margin="5" Padding="10,0" Click="BtnExportImage_Click" />
-            
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <CheckBox Content="グリッドスナップ" IsChecked="{Binding SnapToGrid}" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
         </StackPanel>
-
 
         <!-- Excelのシートタブのように、同じJSONファイル内で複数の図を切り替えるためのバー -->
         <DockPanel DockPanel.Dock="Top" Background="#F5F5F5" Height="34" LastChildFill="True">
@@ -292,7 +292,30 @@
                             <Thumb DragStarted="Node_DragStarted" DragDelta="Node_DragDelta" PreviewMouseLeftButtonDown="Node_PreviewMouseLeftButtonDown">
                                 <Thumb.Template>
                                     <ControlTemplate>
-                                        <Grid Width="{Binding Width}" Height="{Binding Height}" Cursor="Hand" x:Name="NodeGrid" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType" Background="Transparent" ContextMenuOpening="NodeGrid_ContextMenuOpening">
+                                        <Canvas Width="{Binding Width}" Height="{Binding Height}" Background="{x:Null}">
+                                            <Path Data="{Binding TailPathLocalData}"
+                                                  Fill="#FFF4A8"
+                                                  Stroke="#D6A600"
+                                                  StrokeThickness="2"
+                                                  Visibility="{Binding StickySpeechBubbleVisibility}"
+                                                  IsHitTestVisible="False"
+                                                  Panel.ZIndex="0" />
+                                            <Thumb Width="12" Height="12"
+                                                   Canvas.Left="{Binding TailHandleLocalLeft}"
+                                                   Canvas.Top="{Binding TailHandleLocalTop}"
+                                                   Visibility="{Binding TailHandleVisibility}"
+                                                   Cursor="SizeAll"
+                                                   DragStarted="CalloutTailThumb_DragStarted"
+                                                   DragDelta="CalloutTailThumb_DragDelta"
+                                                   PreviewMouseLeftButtonDown="CalloutTailThumb_PreviewMouseLeftButtonDown"
+                                                   Panel.ZIndex="40">
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Ellipse Fill="White" Stroke="DarkOrange" StrokeThickness="2"/>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                            <Grid Width="{Binding Width}" Height="{Binding Height}" Cursor="Hand" x:Name="NodeGrid" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType" Background="Transparent" ContextMenuOpening="NodeGrid_ContextMenuOpening" Panel.ZIndex="10">
                                             
                                             <Grid.ContextMenu>
                                                 <ContextMenu>
@@ -302,6 +325,9 @@
                                                     <Separator/>
                                                     <MenuItem Header="実線にする" Click="MenuItem_Solid_Click"/>
                                                     <MenuItem Header="点線にする" Click="MenuItem_Dashed_Click"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="付箋に吹き出しを付ける" Click="MenuItem_MakeStickySpeechBubble_Click"/>
+                                                    <MenuItem Header="通常の付箋に戻す" Click="MenuItem_MakeStickyNote_Click"/>
                                                     <Separator/>
                                                     <MenuItem Header="ファイル形式を表示"
                                                               IsCheckable="True"
@@ -353,6 +379,14 @@
                                                 </Canvas>
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
+
+                                            <Border x:Name="ShapeStickyNote" Background="#FFF4A8" BorderBrush="#D6A600" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
+                                                <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
+                                            </Border>
+
+                                            <Border x:Name="ShapeStickySpeechBubble" Background="#FFF4A8" BorderBrush="#D6A600" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
+                                                <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
+                                            </Border>
                                             
                                             <Border x:Name="SelectionHighlight" BorderBrush="Orange" BorderThickness="3" Visibility="Collapsed" Margin="-3" CornerRadius="5"/>
                                             
@@ -370,7 +404,7 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
                                                 
-                                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
+                                                <TextBox x:Name="EditTextBox" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
                                                     <TextBox.Style>
                                                         <Style TargetType="TextBox">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -417,6 +451,7 @@
                                                 </Thumb.Template>
                                             </Thumb>
                                         </Grid>
+                                        </Canvas>
                                         
                                         <ControlTemplate.Triggers>
                                             <DataTrigger Binding="{Binding Type}" Value="Process">
@@ -454,6 +489,20 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Type}" Value="Document">
                                                 <Setter TargetName="ShapeDocument" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="StickyNote">
+                                                <Setter TargetName="ShapeStickyNote" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="LabelText" Property="FontWeight" Value="Normal" />
+                                                <Setter TargetName="LabelText" Property="HorizontalAlignment" Value="Left" />
+                                                <Setter TargetName="LabelText" Property="VerticalAlignment" Value="Top" />
+                                                <Setter TargetName="LabelText" Property="TextAlignment" Value="Left" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="StickySpeechBubble">
+                                                <Setter TargetName="ShapeStickySpeechBubble" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="LabelText" Property="FontWeight" Value="Normal" />
+                                                <Setter TargetName="LabelText" Property="HorizontalAlignment" Value="Left" />
+                                                <Setter TargetName="LabelText" Property="VerticalAlignment" Value="Top" />
+                                                <Setter TargetName="LabelText" Property="TextAlignment" Value="Left" />
                                             </DataTrigger>
 
                                             <!-- 右クリックメニューの「ファイル形式を表示」がONのときだけ表示 -->

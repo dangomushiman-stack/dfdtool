@@ -35,6 +35,10 @@ namespace DfdToolWpf
         private double resizeRawW;
         private double resizeRawH;
 
+        // 吹き出し先端ドラッグ用：グリッドスナップONでも細かいDragDeltaを累積する
+        private double tailRawX;
+        private double tailRawY;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -548,6 +552,72 @@ namespace DfdToolWpf
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
             {
                 node.IsDashed = true;
+            }
+        }
+
+        private void MenuItem_MakeStickySpeechBubble_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
+            {
+                if (node.Type == EditorMode.StickyNote)
+                {
+                    node.Type = EditorMode.StickySpeechBubble;
+                    if (node.Height < 100) node.Height = 100;
+                    node.InitializeTailTargetIfNeeded();
+                    node.OnTypeChangedForView();
+                }
+            }
+        }
+
+        private void MenuItem_MakeStickyNote_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
+            {
+                if (node.Type == EditorMode.StickySpeechBubble)
+                {
+                    node.Type = EditorMode.StickyNote;
+                    node.OnTypeChangedForView();
+                }
+            }
+        }
+
+
+        private void CalloutTailThumb_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Thumb thumb && thumb.DataContext is NodeViewModel node)
+            {
+                ViewModel.ResetSelection();
+                node.IsSelected = true;
+
+                // ここで e.Handled = true にすると、Thumb がドラッグ開始処理を受け取れず、
+                // 丸ハンドルを押せても DragDelta が発生しない場合がある。
+            }
+        }
+
+        private void CalloutTailThumb_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            if (sender is Thumb thumb && thumb.DataContext is NodeViewModel node)
+            {
+                ViewModel.ResetSelection();
+                node.IsSelected = true;
+
+                // SnapToGrid がONのとき、DragDeltaの小さな移動量を丸めて消さないように
+                // ドラッグ開始時の実座標から累積して計算する。
+                tailRawX = node.TailTargetX;
+                tailRawY = node.TailTargetY;
+            }
+        }
+
+        private void CalloutTailThumb_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            if (sender is Thumb thumb && thumb.DataContext is NodeViewModel node)
+            {
+                tailRawX += e.HorizontalChange;
+                tailRawY += e.VerticalChange;
+
+                node.TailTargetX = Snap(tailRawX);
+                node.TailTargetY = Snap(tailRawY);
+                e.Handled = true;
             }
         }
 
