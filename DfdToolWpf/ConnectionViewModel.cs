@@ -31,6 +31,33 @@ namespace DfdToolWpf
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
 
+        private ConnectionDashStyle _dashStyle = ConnectionDashStyle.Solid;
+        public ConnectionDashStyle DashStyle
+        {
+            get => _dashStyle;
+            set
+            {
+                if (_dashStyle == value) return;
+                _dashStyle = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsDashed));
+                OnPropertyChanged(nameof(IsDashCoarse));
+                OnPropertyChanged(nameof(IsDashNormal));
+                OnPropertyChanged(nameof(IsDashFine));
+            }
+        }
+
+        // 旧保存データ・既存処理との互換用。true の場合は標準の破線にする。
+        public bool IsDashed
+        {
+            get => DashStyle != ConnectionDashStyle.Solid;
+            set => DashStyle = value ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid;
+        }
+
+        public bool IsDashCoarse => DashStyle == ConnectionDashStyle.Coarse;
+        public bool IsDashNormal => DashStyle == ConnectionDashStyle.Normal;
+        public bool IsDashFine => DashStyle == ConnectionDashStyle.Fine;
+
         public ConnectionViewModel(NodeViewModel source, NodeViewModel target)
         {
             Source = source;

@@ -10,6 +10,7 @@ using System.Windows.Media;
 namespace DfdToolWpf
 {
     public enum EditorMode { Process, Entity, DataStore, Arrow, DashEntity, CategoryFrame, ConnectableFrame, Database, HorizontalDatabase, Document }
+    public enum ConnectionDashStyle { Solid, Coarse, Normal, Fine }
 
     public class DfdSaveData
     {
@@ -56,6 +57,8 @@ namespace DfdToolWpf
         public Guid SourceId { get; set; }
         public Guid TargetId { get; set; }
         public string Text { get; set; }
+        public bool IsDashed { get; set; }
+        public ConnectionDashStyle? DashStyle { get; set; }
         
         public List<Point> Waypoints { get; set; } = new List<Point>(); 
         public List<WaypointData> WaypointNodes { get; set; } = new List<WaypointData>(); 
@@ -465,7 +468,7 @@ namespace DfdToolWpf
             
             foreach (var c in sheet.Connections) 
             {
-                var cData = new ConnectionData { SourceId = c.Source.Id, TargetId = c.Target.Id, Text = c.Text };
+                var cData = new ConnectionData { SourceId = c.Source.Id, TargetId = c.Target.Id, Text = c.Text, IsDashed = c.IsDashed, DashStyle = c.DashStyle };
                 
                 foreach (var wp in c.Waypoints) 
                 {
@@ -581,7 +584,7 @@ namespace DfdToolWpf
             {
                 if (dict.TryGetValue(c.SourceId, out var src) && dict.TryGetValue(c.TargetId, out var tgt)) 
                 {
-                    var conn = new ConnectionViewModel(src, tgt) { Text = c.Text ?? "データフロー" };
+                    var conn = new ConnectionViewModel(src, tgt) { Text = c.Text ?? "データフロー", DashStyle = c.DashStyle ?? (c.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid) };
                     
                     if (c.WaypointNodes != null && c.WaypointNodes.Any())
                     {

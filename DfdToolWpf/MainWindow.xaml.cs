@@ -507,6 +507,34 @@ namespace DfdToolWpf
             ViewModel.ClearSheetSearchMarks();
         }
 
+        private void SetSelectedConnectionDashStyle(object sender, ConnectionDashStyle dashStyle)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is ConnectionViewModel conn)
+            {
+                conn.DashStyle = dashStyle;
+            }
+        }
+
+        private void MenuItem_ConnectionSolid_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Solid);
+        }
+
+        private void MenuItem_ConnectionCoarseDash_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Coarse);
+        }
+
+        private void MenuItem_ConnectionNormalDash_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Normal);
+        }
+
+        private void MenuItem_ConnectionFineDash_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Fine);
+        }
+
         private void MenuItem_Solid_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
@@ -546,9 +574,9 @@ namespace DfdToolWpf
                 ViewModel.ResetSelection();
                 conn.IsSelected = true;
 
-                Point p = e.GetPosition(MainCanvas);
-                InsertWaypoint(conn, p, true);
-                e.Handled = true; 
+                // 右クリックでは接続線を選択し、ContextMenu で線種を変更できるようにする。
+                // 以前の「右クリックでジャンプ中継点追加」は、メニュー操作と競合するためここでは行わない。
+                e.Handled = false;
             }
         }
 

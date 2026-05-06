@@ -30,6 +30,7 @@
             <CheckBox Content="グリッドスナップ" IsChecked="{Binding SnapToGrid}" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
         </StackPanel>
 
+
         <!-- Excelのシートタブのように、同じJSONファイル内で複数の図を切り替えるためのバー -->
         <DockPanel DockPanel.Dock="Top" Background="#F5F5F5" Height="34" LastChildFill="True">
             <Button Content="＋ シート" Width="80" Margin="4,3" Padding="6,0" Click="BtnAddSheet_Click" />
@@ -152,10 +153,29 @@
                         <DataTemplate>
                             <Canvas TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
                                 <Path Data="{Binding LineGeometry}" StrokeThickness="3" Cursor="Hand" MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown" MouseRightButtonDown="ConnectionPath_MouseRightButtonDown" Panel.ZIndex="0">
+                                    <Path.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="矢印を実線にする" Click="MenuItem_ConnectionSolid_Click"/>
+                                            <Separator/>
+                                            <MenuItem Header="破線：粗い" Click="MenuItem_ConnectionCoarseDash_Click"/>
+                                            <MenuItem Header="破線：標準" Click="MenuItem_ConnectionNormalDash_Click"/>
+                                            <MenuItem Header="破線：細かい" Click="MenuItem_ConnectionFineDash_Click"/>
+                                        </ContextMenu>
+                                    </Path.ContextMenu>
                                     <Path.Style>
                                         <Style TargetType="Path">
                                             <Setter Property="Stroke" Value="Black" />
+                                            <Setter Property="StrokeDashArray" Value="{x:Null}" />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDashCoarse}" Value="True">
+                                                    <Setter Property="StrokeDashArray" Value="8 6" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsDashNormal}" Value="True">
+                                                    <Setter Property="StrokeDashArray" Value="4 4" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsDashFine}" Value="True">
+                                                    <Setter Property="StrokeDashArray" Value="2 2" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                     <Setter Property="Stroke" Value="Orange" />
                                                 </DataTrigger>
