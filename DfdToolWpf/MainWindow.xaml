@@ -20,6 +20,8 @@
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <RadioButton Content="↗️ 矢印" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Arrow" Background="#DDF" />
             <Button Content="🗑️ 削除" Margin="5" Padding="10,0" Click="BtnDelete_Click" Foreground="DarkRed" />
+            <Button Content="↶ 戻す" Margin="5" Padding="10,0" Click="BtnUndo_Click" IsEnabled="{Binding CanUndo}" ToolTip="Ctrl+Z" />
+            <Button Content="↷ やり直し" Margin="5" Padding="10,0" Click="BtnRedo_Click" IsEnabled="{Binding CanRedo}" ToolTip="Ctrl+Y" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <Button Content="クリア" Margin="5" Padding="10,0" Click="BtnClear_Click" Foreground="Red" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>

@@ -53,6 +53,7 @@ namespace DfdToolWpf
             // ダブルクリック時だけシート名編集に入る。
             if (e.ClickCount == 2 && ((FrameworkElement)sender).DataContext is DiagramSheetViewModel sheet)
             {
+                ViewModel.SaveUndoState();
                 sheet.IsNameEditing = true;
                 e.Handled = true;
             }

@@ -22,6 +22,7 @@ namespace DfdToolWpf
             {
                 if (e.ClickCount == 2)
                 {
+                    ViewModel.SaveUndoState();
                     ViewModel.ResetSelection();
                     node.IsSelected = true;
                     node.IsEditing = true;
@@ -47,6 +48,7 @@ namespace DfdToolWpf
         {
             if (((Thumb)sender).DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 dragRawX = node.X;
                 dragRawY = node.Y;
             }
@@ -72,6 +74,7 @@ namespace DfdToolWpf
         {
             if (((Thumb)sender).DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 resizeRawW = node.Width;
                 resizeRawH = node.Height;
             }
@@ -133,6 +136,7 @@ namespace DfdToolWpf
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 node.IsFileFormatVisible = item.IsChecked;
 
                 if (node.IsFileFormatVisible && string.IsNullOrWhiteSpace(node.FileFormat))
@@ -169,7 +173,11 @@ namespace DfdToolWpf
             if (sender is MenuItem item && item.Tag is string color)
             {
                 var node = GetNodeFromContextMenuItem(item);
-                if (node != null) node.StrokeColor = color;
+                if (node != null)
+                {
+                    ViewModel.SaveUndoState();
+                    node.StrokeColor = color;
+                }
             }
         }
 
@@ -178,7 +186,11 @@ namespace DfdToolWpf
             if (sender is MenuItem item && item.Tag is string color)
             {
                 var node = GetNodeFromContextMenuItem(item);
-                if (node != null) node.FillColor = color;
+                if (node != null)
+                {
+                    ViewModel.SaveUndoState();
+                    node.FillColor = color;
+                }
             }
         }
 
@@ -204,6 +216,7 @@ namespace DfdToolWpf
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 node.IsDashed = false;
             }
         }
@@ -212,6 +225,7 @@ namespace DfdToolWpf
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Grid grid && grid.DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 node.IsDashed = true;
             }
         }
@@ -222,6 +236,7 @@ namespace DfdToolWpf
             {
                 if (node.Type == EditorMode.StickyNote)
                 {
+                    ViewModel.SaveUndoState();
                     node.Type = EditorMode.StickySpeechBubble;
                     if (node.Height < 100) node.Height = 100;
                     node.InitializeTailTargetIfNeeded();
@@ -236,6 +251,7 @@ namespace DfdToolWpf
             {
                 if (node.Type == EditorMode.StickySpeechBubble)
                 {
+                    ViewModel.SaveUndoState();
                     node.Type = EditorMode.StickyNote;
                     node.OnTypeChangedForView();
                 }
@@ -258,6 +274,7 @@ namespace DfdToolWpf
         {
             if (sender is Thumb thumb && thumb.DataContext is NodeViewModel node)
             {
+                ViewModel.SaveUndoState();
                 ViewModel.ResetSelection();
                 node.IsSelected = true;
 

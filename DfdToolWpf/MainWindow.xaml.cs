@@ -60,9 +60,33 @@ namespace DfdToolWpf
             ViewModel.DeleteSelected();
         }
 
+        private void BtnUndo_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Undo();
+        }
+
+        private void BtnRedo_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Redo();
+        }
+
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (IsTextEditingNow()) return;
+
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z)
+            {
+                ViewModel.Undo();
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y)
+            {
+                ViewModel.Redo();
+                e.Handled = true;
+                return;
+            }
 
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {

@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Media;
 
@@ -45,14 +47,81 @@ namespace DfdToolWpf
     
             private bool _snapToGrid = true;
             public bool SnapToGrid { get => _snapToGrid; set { _snapToGrid = value; OnPropertyChanged(); } }
-    
+
+            private const int MaxUndoHistory = 50;
+            private readonly Stack<DfdSaveData> undoStack = new Stack<DfdSaveData>();
+            private readonly Stack<DfdSaveData> redoStack = new Stack<DfdSaveData>();
+            private bool isRestoringHistory = false;
+
+            public bool CanUndo => undoStack.Count > 0;
+            public bool CanRedo => redoStack.Count > 0;
+
             public MainViewModel()
             {
-                AddSheet("Sheet1");
+                AddSheet("Sheet1", false);
+            }
+
+            public void SaveUndoState()
+            {
+                if (isRestoringHistory) return;
+                undoStack.Push(CloneSaveData(GetSaveData()));
+                TrimUndoHistory();
+                redoStack.Clear();
+                NotifyUndoRedoChanged();
+            }
+
+            public bool Undo()
+            {
+                if (!CanUndo) return false;
+
+                redoStack.Push(CloneSaveData(GetSaveData()));
+                var previous = undoStack.Pop();
+                RestoreSaveData(previous);
+                NotifyUndoRedoChanged();
+                return true;
+            }
+
+            public bool Redo()
+            {
+                if (!CanRedo) return false;
+
+                undoStack.Push(CloneSaveData(GetSaveData()));
+                TrimUndoHistory();
+                var next = redoStack.Pop();
+                RestoreSaveData(next);
+                NotifyUndoRedoChanged();
+                return true;
+            }
+
+            private void NotifyUndoRedoChanged()
+            {
+                OnPropertyChanged(nameof(CanUndo));
+                OnPropertyChanged(nameof(CanRedo));
+            }
+
+            private void TrimUndoHistory()
+            {
+                if (undoStack.Count <= MaxUndoHistory) return;
+
+                var items = undoStack.Reverse().Skip(undoStack.Count - MaxUndoHistory).ToList();
+                undoStack.Clear();
+                foreach (var item in items)
+                {
+                    undoStack.Push(item);
+                }
+            }
+
+            private DfdSaveData CloneSaveData(DfdSaveData source)
+            {
+                var options = new JsonSerializerOptions();
+                options.Converters.Add(new JsonStringEnumConverter());
+                string json = JsonSerializer.Serialize(source, options);
+                return JsonSerializer.Deserialize<DfdSaveData>(json, options) ?? new DfdSaveData();
             }
     
-            public void AddSheet(string name = null)
+            public void AddSheet(string name = null, bool recordUndo = true)
             {
+                if (recordUndo) SaveUndoState();
                 string sheetName = string.IsNullOrWhiteSpace(name) ? GetNextSheetName() : name;
                 var sheet = new DiagramSheetViewModel(sheetName);
                 Sheets.Add(sheet);
@@ -63,6 +132,7 @@ namespace DfdToolWpf
             public void DeleteCurrentSheet()
             {
                 if (Sheets.Count <= 1 || SelectedSheet == null) return;
+                SaveUndoState();
     
                 int index = Sheets.IndexOf(SelectedSheet);
                 Sheets.Remove(SelectedSheet);
@@ -154,6 +224,7 @@ namespace DfdToolWpf
             public bool PasteCopiedNode()
             {
                 if (SelectedSheet == null || copiedNodeData == null) return false;
+                SaveUndoState();
     
                 double offset = 20 * copiedNodePasteCount;
                 var pastedNode = CreateNodeFromData(copiedNodeData, offset, offset);
@@ -170,6 +241,7 @@ namespace DfdToolWpf
             {
                 var selectedNode = Nodes?.FirstOrDefault(n => n.IsSelected);
                 if (selectedNode == null) return false;
+                SaveUndoState();
     
                 var copiedData = CreateNodeDataCopy(selectedNode);
                 var pastedNode = CreateNodeFromData(copiedData, 20, 20);
@@ -262,7 +334,8 @@ namespace DfdToolWpf
 
             public void AddNode(EditorMode type, double x, double y)
             {
-                if (SelectedSheet == null) AddSheet("Sheet1");
+                SaveUndoState();
+                if (SelectedSheet == null) AddSheet("Sheet1", false);
     
                 var node = new NodeViewModel { Type = type, X = x, Y = y, Text = $"要素 {nodeCount++}", StrokeColor = GetDefaultStrokeColor(type), FillColor = GetDefaultFillColor(type) };
     
@@ -308,6 +381,8 @@ namespace DfdToolWpf
             public void DeleteSelected()
             {
                 if (SelectedSheet == null) return;
+                if (!Nodes.Any(n => n.IsSelected) && !Connections.Any(c => c.IsSelected)) return;
+                SaveUndoState();
     
                 var selectedNode = Nodes.FirstOrDefault(n => n.IsSelected);
                 if (selectedNode != null)
@@ -336,6 +411,8 @@ namespace DfdToolWpf
             public void ClearAll() 
             { 
                 if (SelectedSheet == null) return;
+                if (!Nodes.Any() && !Connections.Any()) return;
+                SaveUndoState();
                 Nodes.Clear(); 
                 Connections.Clear(); 
                 nodeCount = 1; 
@@ -389,6 +466,15 @@ namespace DfdToolWpf
     
             public void LoadSaveData(DfdSaveData data)
             {
+                SaveUndoState();
+                RestoreSaveData(data);
+            }
+
+            private void RestoreSaveData(DfdSaveData data)
+            {
+                isRestoringHistory = true;
+                try
+                {
                 Sheets.Clear();
                 firstSelectedNode = null;
                 nodeCount = 1;
@@ -417,15 +503,21 @@ namespace DfdToolWpf
     
                 if (Sheets.Count == 0)
                 {
-                    AddSheet("Sheet1");
+                    AddSheet("Sheet1", false);
                 }
     
                 OnPropertyChanged(nameof(CanDeleteSheet));
+                }
+                finally
+                {
+                    isRestoringHistory = false;
+                }
             }
     
             public int ImportSaveDataAsSheets(DfdSaveData data, string sourceName = null)
             {
                 if (data == null) return 0;
+                SaveUndoState();
     
                 ClearSheetSearchMarks();
                 firstSelectedNode = null;
@@ -530,6 +622,7 @@ namespace DfdToolWpf
                 {
                     if (firstSelectedNode != clickedNode) 
                     {
+                        SaveUndoState();
                         Connections.Add(new ConnectionViewModel(firstSelectedNode, clickedNode));
                     }
                     firstSelectedNode.IsSelected = false; 

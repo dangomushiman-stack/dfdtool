@@ -28,6 +28,7 @@ namespace DfdToolWpf
                     
                     if (ViewModel.CurrentMode == EditorMode.CategoryFrame || ViewModel.CurrentMode == EditorMode.ConnectableFrame) 
                     {
+                        ViewModel.SaveUndoState();
                         ViewModel.Nodes.Add(new NodeViewModel 
                         { 
                             Type = ViewModel.CurrentMode, 

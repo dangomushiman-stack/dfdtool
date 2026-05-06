@@ -20,6 +20,7 @@ namespace DfdToolWpf
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is ConnectionViewModel conn)
             {
+                ViewModel.SaveUndoState();
                 conn.DashStyle = dashStyle;
             }
         }
@@ -97,6 +98,7 @@ namespace DfdToolWpf
             double rawX = p.X - 5;
             double rawY = p.Y - 5;
             
+            ViewModel.SaveUndoState();
             conn.Waypoints.Insert(insertIndex, new WaypointViewModel { X = Snap(rawX), Y = Snap(rawY), IsJump = isJump });
         }
 
@@ -120,6 +122,7 @@ namespace DfdToolWpf
                     {
                         if (c.Waypoints.Contains(wp)) 
                         { 
+                            ViewModel.SaveUndoState();
                             c.Waypoints.Remove(wp); 
                             break; 
                         } 
@@ -128,6 +131,7 @@ namespace DfdToolWpf
                     return; 
                 }
                 
+                ViewModel.SaveUndoState();
                 isDragging = true; 
                 selectedElement = el; 
                 clickPosition = e.GetPosition(el); 
@@ -140,6 +144,7 @@ namespace DfdToolWpf
         {
             if (sender is Ellipse el && el.DataContext is WaypointViewModel wp)
             {
+                ViewModel.SaveUndoState();
                 wp.IsJump = !wp.IsJump; 
                 e.Handled = true;
             }
@@ -149,6 +154,7 @@ namespace DfdToolWpf
         {
             if (e.ClickCount == 2 && ((Grid)sender).DataContext is ConnectionViewModel conn) 
             { 
+                ViewModel.SaveUndoState();
                 conn.IsEditing = true; 
                 e.Handled = true; 
             }
