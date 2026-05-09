@@ -358,7 +358,7 @@
                                                     <Separator/>
                                                     <MenuItem Header="ファイル形式を表示"
                                                               IsCheckable="True"
-                                                              IsChecked="{Binding PlacementTarget.DataContext.IsFileFormatVisible, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=TwoWay}"
+                                                              IsChecked="{Binding IsFileFormatVisible, Mode=TwoWay}"
                                                               Click="MenuItem_FileFormatVisible_Click"/>
                                                     <Separator/>
                                                     <MenuItem Header="同じシンボルと文字列を検索" Click="MenuItem_SearchSameSymbolText_Click"/>
@@ -468,10 +468,10 @@
                                                      LostFocus="FileFormatTextBox_LostFocus"
                                                      Panel.ZIndex="30"
                                                      Visibility="Collapsed" />
-                                            <Thumb x:Name="ResizeThumb" Width="15" Height="15" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" Visibility="Collapsed">
+                                            <Thumb x:Name="ResizeThumb" Width="15" Height="15" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" Visibility="Collapsed" Panel.ZIndex="60">
                                                 <Thumb.Template>
                                                     <ControlTemplate>
-                                                        <Grid Background="{x:Null}">
+                                                        <Grid Background="Transparent">
                                                             <Path Data="M 0 15 L 15 0 L 15 15 Z" Fill="Gray" Opacity="0.5"/>
                                                         </Grid>
                                                     </ControlTemplate>

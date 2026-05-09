@@ -58,7 +58,18 @@ namespace DfdToolWpf
             public string StrokeColor { get => _strokeColor; set { _strokeColor = string.IsNullOrWhiteSpace(value) ? "#4A90E2" : value; OnPropertyChanged(); } }
             public string FillColor { get => _fillColor; set { _fillColor = string.IsNullOrWhiteSpace(value) ? "White" : value; OnPropertyChanged(); } }
             public bool IsFileFormatVisible { get => _isFileFormatVisible; set { _isFileFormatVisible = value; OnPropertyChanged(); } }
-            public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); OnPropertyChanged(nameof(TailHandleVisibility)); } }
+            public bool IsSelected
+            {
+                get => _isSelected;
+                set
+                {
+                    if (_isSelected == value) return;
+                    _isSelected = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(TailHandleVisibility));
+                    OnPropertyChanged(nameof(Layer));
+                }
+            }
             public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
             public bool IsDashed { get => _isDashed; set { _isDashed = value; OnPropertyChanged(); } }
     
@@ -71,12 +82,31 @@ namespace DfdToolWpf
 
             // 同じ ItemsControl/Canvas 内では、Panel.ZIndex が同じ場合は追加順が前後関係に影響する。
             // 図形の種類ごとにレイヤーを固定し、後から配置した枠が通常図形の手前に来ないようにする。
-            public int Layer => Type switch
+            public int Layer
             {
-                EditorMode.CategoryFrame => -20,
-                EditorMode.ConnectableFrame => -10,
-                _ => 20
-            };
+                get
+                {
+                    // 選択中の枠は、ほかの枠よりは前面に出す。
+                    // ただし通常図形より前面には出さない。
+                    //
+                    // 以前は選択中ノードを +1000 していたため、選択中の枠が通常図形の上にかぶさり、
+                    // 枠内の図形をクリックしても枠ボディクリック扱いになって、配置処理が優先されていた。
+                    //
+                    // レイヤー順：
+                    //   未選択の分類枠        -20
+                    //   未選択の接続枠        -10
+                    //   選択中の分類枠          0
+                    //   選択中の接続枠          5
+                    //   通常図形               20
+                    //   選択中の通常図形     1020
+                    return Type switch
+                    {
+                        EditorMode.CategoryFrame => IsSelected ? 0 : -20,
+                        EditorMode.ConnectableFrame => IsSelected ? 5 : -10,
+                        _ => IsSelected ? 1020 : 20
+                    };
+                }
+            }
 
             public Visibility StickySpeechBubbleVisibility => IsStickySpeechBubble ? Visibility.Visible : Visibility.Collapsed;
             public Visibility TailHandleVisibility => IsStickySpeechBubble && IsSelected ? Visibility.Visible : Visibility.Collapsed;
