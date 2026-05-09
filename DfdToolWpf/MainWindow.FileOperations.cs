@@ -20,20 +20,7 @@ namespace DfdToolWpf
 
         private void BtnOverwriteSave_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(currentFilePath))
-            {
-                SaveAs();
-                return;
-            }
-
-            try
-            {
-                SaveToFile(currentFilePath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("上書き保存に失敗しました。\n" + ex.Message, "エラー");
-            }
+            SaveCurrentDocument();
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -41,7 +28,28 @@ namespace DfdToolWpf
             SaveAs();
         }
 
-        private void SaveAs()
+        private bool SaveCurrentDocument()
+        {
+            if (string.IsNullOrWhiteSpace(currentFilePath))
+            {
+                return SaveAs();
+            }
+
+            try
+            {
+                SaveToFile(currentFilePath);
+                ViewModel.MarkClean();
+                UpdateWindowTitle();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("上書き保存に失敗しました。\n" + ex.Message, "エラー");
+                return false;
+            }
+        }
+
+        private bool SaveAs()
         {
             var sfd = new SaveFileDialog
             {
@@ -61,13 +69,18 @@ namespace DfdToolWpf
                 {
                     SaveToFile(sfd.FileName);
                     currentFilePath = sfd.FileName;
+                    ViewModel.MarkClean();
                     UpdateWindowTitle();
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show("保存に失敗しました。\n" + ex.Message, "エラー");
+                    return false;
                 }
             }
+
+            return false;
         }
 
         private void SaveToFile(string fileName)
@@ -80,13 +93,32 @@ namespace DfdToolWpf
 
         private void UpdateWindowTitle()
         {
+            string dirtyMark = ViewModel?.IsDirty == true ? "*" : string.Empty;
             Title = string.IsNullOrWhiteSpace(currentFilePath)
-                ? "DFD Tool"
-                : $"DFD Tool - {System.IO.Path.GetFileName(currentFilePath)}";
+                ? $"DFD Tool{dirtyMark}"
+                : $"DFD Tool - {System.IO.Path.GetFileName(currentFilePath)}{dirtyMark}";
+        }
+
+        private bool ConfirmSaveIfDirty()
+        {
+            if (ViewModel?.IsDirty != true) return true;
+
+            var result = MessageBox.Show(
+                "ファイルに変更があります。保存しますか？",
+                "未保存の変更",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Cancel) return false;
+            if (result == MessageBoxResult.No) return true;
+
+            return SaveCurrentDocument();
         }
 
         private void BtnLoad_Click(object sender, RoutedEventArgs e)
         {
+            if (!ConfirmSaveIfDirty()) return;
+
             var ofd = new OpenFileDialog
             {
                 Filter = "DFD図ファイル (*.dfdj)|*.dfdj|JSONファイル (*.json)|*.json|すべての対応ファイル (*.dfdj;*.json)|*.dfdj;*.json",
@@ -109,6 +141,8 @@ namespace DfdToolWpf
                 if (data != null)
                 {
                     ViewModel.LoadSaveData(data);
+                    ViewModel.ClearUndoRedoHistory();
+                    ViewModel.MarkClean();
                     currentFilePath = fileName;
                     UpdateWindowTitle();
 

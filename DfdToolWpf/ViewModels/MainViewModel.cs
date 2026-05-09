@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -56,6 +56,35 @@ namespace DfdToolWpf
             public bool CanUndo => undoStack.Count > 0;
             public bool CanRedo => redoStack.Count > 0;
 
+            private bool _isDirty = false;
+            public bool IsDirty
+            {
+                get => _isDirty;
+                private set
+                {
+                    if (_isDirty == value) return;
+                    _isDirty = value;
+                    OnPropertyChanged();
+                }
+            }
+
+            public void MarkClean()
+            {
+                IsDirty = false;
+            }
+
+            public void MarkDirty()
+            {
+                IsDirty = true;
+            }
+
+            public void ClearUndoRedoHistory()
+            {
+                undoStack.Clear();
+                redoStack.Clear();
+                NotifyUndoRedoChanged();
+            }
+
             public MainViewModel()
             {
                 AddSheet("Sheet1", false);
@@ -67,6 +96,7 @@ namespace DfdToolWpf
                 undoStack.Push(CloneSaveData(GetSaveData()));
                 TrimUndoHistory();
                 redoStack.Clear();
+                MarkDirty();
                 NotifyUndoRedoChanged();
             }
 
@@ -77,6 +107,7 @@ namespace DfdToolWpf
                 redoStack.Push(CloneSaveData(GetSaveData()));
                 var previous = undoStack.Pop();
                 RestoreSaveData(previous);
+                MarkDirty();
                 NotifyUndoRedoChanged();
                 return true;
             }
@@ -89,6 +120,7 @@ namespace DfdToolWpf
                 TrimUndoHistory();
                 var next = redoStack.Pop();
                 RestoreSaveData(next);
+                MarkDirty();
                 NotifyUndoRedoChanged();
                 return true;
             }

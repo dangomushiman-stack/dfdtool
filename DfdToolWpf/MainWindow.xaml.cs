@@ -44,6 +44,23 @@ namespace DfdToolWpf
             InitializeComponent();
             ViewModel = new MainViewModel();
             this.DataContext = ViewModel;
+            ViewModel.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainViewModel.IsDirty))
+                {
+                    UpdateWindowTitle();
+                }
+            };
+            Closing += MainWindow_Closing;
+            UpdateWindowTitle();
+        }
+
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!ConfirmSaveIfDirty())
+            {
+                e.Cancel = true;
+            }
         }
 
         private void BtnMode_Click(object sender, RoutedEventArgs e)
