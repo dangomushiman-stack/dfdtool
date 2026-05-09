@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -84,6 +84,20 @@ namespace DfdToolWpf
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y)
             {
                 ViewModel.Redo();
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S)
+            {
+                BtnOverwriteSave_Click(sender, e);
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.S)
+            {
+                BtnSave_Click(sender, e);
                 e.Handled = true;
                 return;
             }

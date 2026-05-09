@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -43,10 +43,15 @@ namespace DfdToolWpf
 
         private void SaveAs()
         {
-            var sfd = new SaveFileDialog { Filter = "DFD JSON File|*.json", DefaultExt = ".json" };
+            var sfd = new SaveFileDialog
+            {
+                Filter = "DFD図ファイル (*.dfdj)|*.dfdj|JSONファイル (*.json)|*.json",
+                DefaultExt = ".dfdj",
+                AddExtension = true
+            };
             if (!string.IsNullOrWhiteSpace(currentFilePath))
             {
-                sfd.FileName = System.IO.Path.GetFileName(currentFilePath);
+                sfd.FileName = System.IO.Path.GetFileName(System.IO.Path.ChangeExtension(currentFilePath, ".dfdj"));
                 sfd.InitialDirectory = System.IO.Path.GetDirectoryName(currentFilePath);
             }
 
@@ -82,26 +87,41 @@ namespace DfdToolWpf
 
         private void BtnLoad_Click(object sender, RoutedEventArgs e)
         {
-            var ofd = new OpenFileDialog { Filter = "DFD JSON File|*.json" };
+            var ofd = new OpenFileDialog
+            {
+                Filter = "DFD図ファイル (*.dfdj)|*.dfdj|JSONファイル (*.json)|*.json|すべての対応ファイル (*.dfdj;*.json)|*.dfdj;*.json",
+                DefaultExt = ".dfdj"
+            };
             if (ofd.ShowDialog() == true)
             {
-                try 
-                { 
-                    string json = File.ReadAllText(ofd.FileName);
-                    var options = new JsonSerializerOptions();
-                    options.Converters.Add(new JsonStringEnumConverter());
-                    var data = JsonSerializer.Deserialize<DfdSaveData>(json, options);
-                    if (data != null)
-                    {
-                        ViewModel.LoadSaveData(data);
-                        currentFilePath = ofd.FileName;
-                        UpdateWindowTitle();
-                    }
-                } 
-                catch (Exception ex)
+                LoadFromFile(ofd.FileName);
+            }
+        }
+
+        public void LoadFromFile(string fileName)
+        {
+            try
+            {
+                string json = File.ReadAllText(fileName);
+                var options = new JsonSerializerOptions();
+                options.Converters.Add(new JsonStringEnumConverter());
+                var data = JsonSerializer.Deserialize<DfdSaveData>(json, options);
+                if (data != null)
                 {
-                    MessageBox.Show("読み込みに失敗しました。\n" + ex.Message);
+                    ViewModel.LoadSaveData(data);
+                    currentFilePath = fileName;
+                    UpdateWindowTitle();
+
+                    MainScale.ScaleX = 1;
+                    MainScale.ScaleY = 1;
+                    MainTranslate.X = 0;
+                    MainTranslate.Y = 0;
+                    MainCanvas.Focus();
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("読み込みに失敗しました。\n" + ex.Message, "エラー");
             }
         }
 
@@ -109,9 +129,9 @@ namespace DfdToolWpf
         {
             var ofd = new OpenFileDialog
             {
-                Filter = "DFD JSON File|*.json",
+                Filter = "DFD図ファイル (*.dfdj)|*.dfdj|JSONファイル (*.json)|*.json|すべての対応ファイル (*.dfdj;*.json)|*.dfdj;*.json",
                 Multiselect = true,
-                Title = "シートとして取り込むJSONファイルを選択"
+                Title = "シートとして取り込むDFD図ファイルを選択"
             };
 
             if (ofd.ShowDialog() != true) return;
