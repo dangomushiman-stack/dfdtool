@@ -20,6 +20,13 @@ namespace DfdToolWpf
         {
             if (((Thumb)sender).DataContext is NodeViewModel node)
             {
+                if (IsFrameBodyCanvasClick(e))
+                {
+                    HandleCanvasClick(e.GetPosition(MainCanvas));
+                    e.Handled = true;
+                    return;
+                }
+
                 if (e.ClickCount == 2)
                 {
                     ViewModel.SaveUndoState();
@@ -40,6 +47,60 @@ namespace DfdToolWpf
                 ViewModel.ResetSelection();
                 node.IsSelected = true;
             }
+        }
+
+        private bool IsFrameBodyCanvasClick(MouseButtonEventArgs e)
+        {
+            // 矢印モードでは、接続枠を接続対象としてクリックしたいのでキャンバス扱いにしない。
+            if (ViewModel.CurrentMode == EditorMode.Arrow)
+            {
+                return false;
+            }
+
+            if (!TryGetNodeThumbFromOriginalSource(e.OriginalSource as DependencyObject, out Thumb? thumb, out NodeViewModel? node))
+            {
+                return false;
+            }
+
+            if (node.Type != EditorMode.CategoryFrame && node.Type != EditorMode.ConnectableFrame)
+            {
+                return false;
+            }
+
+            Point p = e.GetPosition(thumb);
+            const double borderHitWidth = 8.0;
+            const double titleHitHeight = 28.0;
+
+            bool onBorder =
+                p.X <= borderHitWidth ||
+                p.Y <= borderHitWidth ||
+                p.X >= node.Width - borderHitWidth ||
+                p.Y >= node.Height - borderHitWidth;
+
+            bool onTitle = p.Y <= titleHitHeight;
+
+            return !onBorder && !onTitle;
+        }
+
+        private bool TryGetNodeThumbFromOriginalSource(DependencyObject? source, out Thumb? thumb, out NodeViewModel? node)
+        {
+            DependencyObject? current = source;
+
+            while (current != null)
+            {
+                if (current is Thumb t && t.DataContext is NodeViewModel n)
+                {
+                    thumb = t;
+                    node = n;
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            thumb = null;
+            node = null;
+            return false;
         }
 
         // --- ★追加：図形のドラッグ開始時に元の位置を記憶 ---

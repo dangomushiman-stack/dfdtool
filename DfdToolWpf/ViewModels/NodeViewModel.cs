@@ -35,6 +35,7 @@ namespace DfdToolWpf
                     OnPropertyChanged(nameof(IsStickySpeechBubble));
                     OnPropertyChanged(nameof(StickySpeechBubbleVisibility));
                     OnPropertyChanged(nameof(TailHandleVisibility));
+                    OnPropertyChanged(nameof(Layer));
                     RefreshTail();
                 }
             }
@@ -44,6 +45,7 @@ namespace DfdToolWpf
                 OnPropertyChanged(nameof(IsStickySpeechBubble));
                 OnPropertyChanged(nameof(StickySpeechBubbleVisibility));
                 OnPropertyChanged(nameof(TailHandleVisibility));
+                OnPropertyChanged(nameof(Layer));
                 RefreshTail();
             }
             
@@ -66,6 +68,16 @@ namespace DfdToolWpf
             public double CenterX => X + Width / 2; 
             public double CenterY => Y + Height / 2;
             public bool IsStickySpeechBubble => Type == EditorMode.StickySpeechBubble;
+
+            // 同じ ItemsControl/Canvas 内では、Panel.ZIndex が同じ場合は追加順が前後関係に影響する。
+            // 図形の種類ごとにレイヤーを固定し、後から配置した枠が通常図形の手前に来ないようにする。
+            public int Layer => Type switch
+            {
+                EditorMode.CategoryFrame => -20,
+                EditorMode.ConnectableFrame => -10,
+                _ => 20
+            };
+
             public Visibility StickySpeechBubbleVisibility => IsStickySpeechBubble ? Visibility.Visible : Visibility.Collapsed;
             public Visibility TailHandleVisibility => IsStickySpeechBubble && IsSelected ? Visibility.Visible : Visibility.Collapsed;
             public double TailHandleLeft => TailTargetX - 6;
