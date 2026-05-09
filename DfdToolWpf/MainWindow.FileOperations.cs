@@ -16,16 +16,68 @@ namespace DfdToolWpf
 {
     public partial class MainWindow
     {
+        private string? currentFilePath;
+
+        private void BtnOverwriteSave_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(currentFilePath))
+            {
+                SaveAs();
+                return;
+            }
+
+            try
+            {
+                SaveToFile(currentFilePath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("上書き保存に失敗しました。\n" + ex.Message, "エラー");
+            }
+        }
+
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
-            var sfd = new SaveFileDialog { Filter = "DFD JSON File|*.json" };
+            SaveAs();
+        }
+
+        private void SaveAs()
+        {
+            var sfd = new SaveFileDialog { Filter = "DFD JSON File|*.json", DefaultExt = ".json" };
+            if (!string.IsNullOrWhiteSpace(currentFilePath))
+            {
+                sfd.FileName = System.IO.Path.GetFileName(currentFilePath);
+                sfd.InitialDirectory = System.IO.Path.GetDirectoryName(currentFilePath);
+            }
+
             if (sfd.ShowDialog() == true)
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                options.Converters.Add(new JsonStringEnumConverter());
-                string json = JsonSerializer.Serialize(ViewModel.GetSaveData(), options);
-                File.WriteAllText(sfd.FileName, json);
+                try
+                {
+                    SaveToFile(sfd.FileName);
+                    currentFilePath = sfd.FileName;
+                    UpdateWindowTitle();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("保存に失敗しました。\n" + ex.Message, "エラー");
+                }
             }
+        }
+
+        private void SaveToFile(string fileName)
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            options.Converters.Add(new JsonStringEnumConverter());
+            string json = JsonSerializer.Serialize(ViewModel.GetSaveData(), options);
+            File.WriteAllText(fileName, json);
+        }
+
+        private void UpdateWindowTitle()
+        {
+            Title = string.IsNullOrWhiteSpace(currentFilePath)
+                ? "DFD Tool"
+                : $"DFD Tool - {System.IO.Path.GetFileName(currentFilePath)}";
         }
 
         private void BtnLoad_Click(object sender, RoutedEventArgs e)
@@ -41,7 +93,9 @@ namespace DfdToolWpf
                     var data = JsonSerializer.Deserialize<DfdSaveData>(json, options);
                     if (data != null)
                     {
-                        ViewModel.LoadSaveData(data); 
+                        ViewModel.LoadSaveData(data);
+                        currentFilePath = ofd.FileName;
+                        UpdateWindowTitle();
                     }
                 } 
                 catch (Exception ex)
