@@ -44,6 +44,8 @@ namespace DfdToolWpf
             // シンボルコピー用。接続線はコピー対象外で、選択中の1シンボルだけを複製・貼り付けする。
             private NodeData copiedNodeData = null;
             private int copiedNodePasteCount = 1;
+
+            public bool HasCopiedNode => copiedNodeData != null;
     
             private bool _snapToGrid = true;
             public bool SnapToGrid { get => _snapToGrid; set { _snapToGrid = value; OnPropertyChanged(); } }
@@ -250,6 +252,7 @@ namespace DfdToolWpf
     
                 copiedNodeData = CreateNodeDataCopy(selectedNode);
                 copiedNodePasteCount = 1;
+                OnPropertyChanged(nameof(HasCopiedNode));
                 return true;
             }
     
@@ -285,6 +288,7 @@ namespace DfdToolWpf
                 // 直後にCtrl+Vした場合も、複製元と同じシンボルを続けて貼り付けられるようにする。
                 copiedNodeData = copiedData;
                 copiedNodePasteCount = 2;
+                OnPropertyChanged(nameof(HasCopiedNode));
                 return true;
             }
     
@@ -305,7 +309,8 @@ namespace DfdToolWpf
                     TailTargetX = node.TailTargetX,
                     TailTargetY = node.TailTargetY,
                     StrokeColor = node.StrokeColor,
-                    FillColor = node.FillColor
+                    FillColor = node.FillColor,
+                    ImageDataBase64 = node.ImageDataBase64
                 };
             }
     
@@ -327,6 +332,7 @@ namespace DfdToolWpf
                     TailTargetY = (data.TailTargetY ?? 0) + offsetY,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? GetDefaultStrokeColor(data.Type) : data.StrokeColor,
                     FillColor = string.IsNullOrWhiteSpace(data.FillColor) ? GetDefaultFillColor(data.Type) : data.FillColor,
+                    ImageDataBase64 = data.ImageDataBase64 ?? string.Empty,
                     IsSelected = false,
                     IsEditing = false
                 };
@@ -344,6 +350,8 @@ namespace DfdToolWpf
                     case EditorMode.StickyNote:
                     case EditorMode.StickySpeechBubble:
                         return "#D6A600";
+                    case EditorMode.ImageNode:
+                        return "#888888";
                     default:
                         return "#4A90E2";
                 }
@@ -359,6 +367,8 @@ namespace DfdToolWpf
                     case EditorMode.StickyNote:
                     case EditorMode.StickySpeechBubble:
                         return "#FFF4A8";
+                    case EditorMode.ImageNode:
+                        return "Transparent";
                     default:
                         return "White";
                 }
@@ -407,6 +417,31 @@ namespace DfdToolWpf
                     node.RefreshTail();
                 }
     
+                Nodes.Add(node);
+            }
+
+            public void AddImageNode(string imageDataBase64, double x, double y, double width, double height)
+            {
+                if (string.IsNullOrWhiteSpace(imageDataBase64)) return;
+                SaveUndoState();
+                if (SelectedSheet == null) AddSheet("Sheet1", false);
+
+                ResetSelection();
+
+                var node = new NodeViewModel
+                {
+                    Type = EditorMode.ImageNode,
+                    X = x,
+                    Y = y,
+                    Width = width > 0 ? width : 240,
+                    Height = height > 0 ? height : 180,
+                    Text = string.Empty,
+                    StrokeColor = GetDefaultStrokeColor(EditorMode.ImageNode),
+                    FillColor = GetDefaultFillColor(EditorMode.ImageNode),
+                    ImageDataBase64 = imageDataBase64,
+                    IsSelected = true
+                };
+
                 Nodes.Add(node);
             }
     
@@ -478,7 +513,7 @@ namespace DfdToolWpf
                 
                 foreach (var n in sheet.Nodes) 
                 {
-                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor });
+                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
                 }
                 
                 foreach (var c in sheet.Connections) 
@@ -607,7 +642,8 @@ namespace DfdToolWpf
                         TailTargetX = n.TailTargetX ?? 0,
                         TailTargetY = n.TailTargetY ?? 0,
                         StrokeColor = string.IsNullOrWhiteSpace(n.StrokeColor) ? GetDefaultStrokeColor(n.Type) : n.StrokeColor,
-                        FillColor = string.IsNullOrWhiteSpace(n.FillColor) ? GetDefaultFillColor(n.Type) : n.FillColor
+                        FillColor = string.IsNullOrWhiteSpace(n.FillColor) ? GetDefaultFillColor(n.Type) : n.FillColor,
+                        ImageDataBase64 = n.ImageDataBase64 ?? string.Empty
                     };
                     if (node.Type == EditorMode.StickySpeechBubble) node.InitializeTailTargetIfNeeded();
                     sheet.Nodes.Add(node); 

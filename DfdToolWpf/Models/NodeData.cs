@@ -25,6 +25,7 @@ namespace DfdToolWpf
             public bool? IsDashed { get; set; }
             public double? TailTargetX { get; set; }
             public double? TailTargetY { get; set; }
+            public string ImageDataBase64 { get; set; }
         }
     
 }

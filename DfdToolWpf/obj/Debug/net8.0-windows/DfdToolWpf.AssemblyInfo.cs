@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DfdToolWpf")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9fa4fbd86a6c8435328e88fa80818f39236cc29c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+55629bb090ee45b33ba47195b761b3d12cf9a88a")]
 [assembly: System.Reflection.AssemblyProductAttribute("DfdToolWpf")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DfdToolWpf")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

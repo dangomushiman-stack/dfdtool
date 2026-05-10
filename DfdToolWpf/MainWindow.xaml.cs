@@ -16,6 +16,8 @@ namespace DfdToolWpf
 {
     public partial class MainWindow : Window
     {
+        private const string InternalSymbolClipboardFormat = "DfdToolWpf.InternalSymbolCopy";
+
         private MainViewModel ViewModel { get; set; }
         
         // 操作用の状態変数
@@ -121,7 +123,11 @@ namespace DfdToolWpf
 
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
-                if (!ViewModel.CopySelectedNode())
+                if (ViewModel.CopySelectedNode())
+                {
+                    MarkInternalSymbolCopiedToClipboard();
+                }
+                else
                 {
                     MessageBox.Show("コピーするシンボルを選択してください。", "シンボルコピー");
                 }
@@ -131,7 +137,15 @@ namespace DfdToolWpf
 
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.V)
             {
-                if (!ViewModel.PasteCopiedNode())
+                if (ShouldPasteCopiedSymbolFirst())
+                {
+                    ViewModel.PasteCopiedNode();
+                }
+                else if (Clipboard.ContainsImage())
+                {
+                    PasteImageFromClipboard();
+                }
+                else if (!ViewModel.PasteCopiedNode())
                 {
                     MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
                 }
@@ -143,6 +157,40 @@ namespace DfdToolWpf
             {
                 ViewModel.DeleteSelected();
                 e.Handled = true;
+            }
+        }
+
+        private bool ShouldPasteCopiedSymbolFirst()
+        {
+            if (!ViewModel.HasCopiedNode)
+            {
+                return false;
+            }
+
+            try
+            {
+                // アプリ内で図形コピーした直後は、OSクリップボードに画像が残っていても図形を優先する。
+                // その後、外部アプリなどで画像をコピーし直した場合は、このマーカーが消えるため画像貼り付けを優先できる。
+                return Clipboard.ContainsData(InternalSymbolClipboardFormat);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void MarkInternalSymbolCopiedToClipboard()
+        {
+            try
+            {
+                var data = new DataObject();
+                data.SetData(InternalSymbolClipboardFormat, "1");
+                Clipboard.SetDataObject(data, true);
+            }
+            catch
+            {
+                // クリップボードが一時的に他プロセスに使用されている場合でも、
+                // アプリ内コピー自体は有効なので何もしない。
             }
         }
 

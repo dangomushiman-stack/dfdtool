@@ -387,7 +387,11 @@ namespace DfdToolWpf
 
         private void MenuItem_CopySymbol_Click(object sender, RoutedEventArgs e)
         {
-            if (!ViewModel.CopySelectedNode())
+            if (ViewModel.CopySelectedNode())
+            {
+                MarkInternalSymbolCopiedToClipboard();
+            }
+            else
             {
                 MessageBox.Show("コピーするシンボルを選択してください。", "シンボルコピー");
             }

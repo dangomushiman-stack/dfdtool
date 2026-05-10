@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -6,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace DfdToolWpf
 {
@@ -17,6 +19,8 @@ namespace DfdToolWpf
             private double _height = 50;
             private string _text;
             private string _fileFormat = string.Empty;
+            private string _imageDataBase64 = string.Empty;
+            private ImageSource _imageSource;
             private string _strokeColor = "#4A90E2";
             private string _fillColor = "White";
             private bool _isSelected, _isEditing, _isDashed, _isFileFormatVisible;
@@ -55,6 +59,17 @@ namespace DfdToolWpf
             public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
             public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
             public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
+            public string ImageDataBase64
+            {
+                get => _imageDataBase64;
+                set
+                {
+                    _imageDataBase64 = value ?? string.Empty;
+                    UpdateImageSourceFromBase64();
+                    OnPropertyChanged();
+                }
+            }
+            public ImageSource ImageSource { get => _imageSource; private set { _imageSource = value; OnPropertyChanged(); } }
             public string StrokeColor { get => _strokeColor; set { _strokeColor = string.IsNullOrWhiteSpace(value) ? "#4A90E2" : value; OnPropertyChanged(); } }
             public string FillColor { get => _fillColor; set { _fillColor = string.IsNullOrWhiteSpace(value) ? "White" : value; OnPropertyChanged(); } }
             public bool IsFileFormatVisible { get => _isFileFormatVisible; set { _isFileFormatVisible = value; OnPropertyChanged(); } }
@@ -116,6 +131,32 @@ namespace DfdToolWpf
             public double TailHandleLocalTop => TailTargetY - Y - 6;
             public string TailPathData { get; private set; } = string.Empty;
             public string TailPathLocalData { get; private set; } = string.Empty;
+
+            private void UpdateImageSourceFromBase64()
+            {
+                if (string.IsNullOrWhiteSpace(_imageDataBase64))
+                {
+                    ImageSource = null;
+                    return;
+                }
+
+                try
+                {
+                    byte[] bytes = Convert.FromBase64String(_imageDataBase64);
+                    using var stream = new MemoryStream(bytes);
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = stream;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    ImageSource = bitmap;
+                }
+                catch
+                {
+                    ImageSource = null;
+                }
+            }
     
             public void InitializeTailTargetIfNeeded()
             {

@@ -16,6 +16,9 @@
                 <MenuItem Header="↷ やり直し" Click="BtnRedo_Click" IsEnabled="{Binding CanRedo}" InputGestureText="Ctrl+Y" />
                 <Separator />
                 <MenuItem Header="🗑️ 削除" Click="BtnDelete_Click" />
+                <Separator />
+                <MenuItem Header="🖼️ 画像を貼り付け" Click="MenuItem_PasteImage_Click" InputGestureText="Ctrl+V" />
+                <MenuItem Header="🖼️ 画像ファイルを挿入" Click="MenuItem_InsertImageFile_Click" />
             </MenuItem>
         </Menu>
 
@@ -414,6 +417,10 @@
                                             <Border x:Name="ShapeStickySpeechBubble" Background="{Binding FillColor}" BorderBrush="{Binding StrokeColor}" BorderThickness="2" CornerRadius="6" Visibility="Collapsed">
                                                 <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
                                             </Border>
+
+                                            <Border x:Name="ShapeImage" Background="White" BorderBrush="{Binding StrokeColor}" BorderThickness="1" Visibility="Collapsed" ClipToBounds="True">
+                                                <Image Source="{Binding ImageSource}" Stretch="Fill" SnapsToDevicePixels="True" />
+                                            </Border>
                                             
                                             <Border x:Name="SelectionHighlight" BorderBrush="Orange" BorderThickness="3" Visibility="Collapsed" Margin="-3" CornerRadius="5"/>
                                             
@@ -530,6 +537,11 @@
                                                 <Setter TargetName="LabelText" Property="HorizontalAlignment" Value="Left" />
                                                 <Setter TargetName="LabelText" Property="VerticalAlignment" Value="Top" />
                                                 <Setter TargetName="LabelText" Property="TextAlignment" Value="Left" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="ImageNode">
+                                                <Setter TargetName="ShapeImage" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="LabelText" Property="Visibility" Value="Collapsed" />
+                                                <Setter TargetName="EditTextBox" Property="Visibility" Value="Collapsed" />
                                             </DataTrigger>
 
                                             <!-- 右クリックメニューの「ファイル形式を表示」がONのときだけ表示 -->
