@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
+using DfdToolWpf.Services;
 
 namespace DfdToolWpf
 {
@@ -35,8 +36,8 @@ namespace DfdToolWpf
                 // 通常の選択・文字編集・ドラッグ開始より優先して処理する。
                 if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
-                    NodeViewModel linkTarget = IsFrame(node)
-                        ? ResolveFrameForRightClick(canvasPoint) ?? node
+                    NodeViewModel linkTarget = _frameHitTestResolver.IsFrame(node)
+                        ? _frameHitTestResolver.ResolveFrameForRightClick(ViewModel.Nodes, canvasPoint) ?? node
                         : node;
 
                     OpenUrlForNode(linkTarget, showMessageIfMissing: false);
@@ -46,9 +47,9 @@ namespace DfdToolWpf
 
                 // 枠をクリックしたときは、実際に押された位置を基準に対象枠を解決する。
                 // これにより、枠が重なっている場合でも「枠線・タイトルを押した枠」を優先できる。
-                if (IsFrame(node) && ViewModel.CurrentMode != EditorMode.Arrow)
+                if (_frameHitTestResolver.IsFrame(node) && ViewModel.CurrentMode != EditorMode.Arrow)
                 {
-                    NodeViewModel? frameForLeftClick = ResolveFrameForLeftClick(canvasPoint);
+                    NodeViewModel? frameForLeftClick = _frameHitTestResolver.ResolveFrameForLeftClick(ViewModel.Nodes, canvasPoint);
 
                     if (frameForLeftClick != null)
                     {
@@ -91,7 +92,7 @@ namespace DfdToolWpf
 
                     // 枠線・タイトルではなく、枠のボディだけをクリックした場合はキャンバス扱いにする。
                     // 図形配置モードなら、枠の内側にもそのまま図形を配置できる。
-                    if (IsFrameBodyOnlyLeftClick(canvasPoint))
+                    if (_frameHitTestResolver.IsFrameBodyOnlyLeftClick(ViewModel.Nodes, canvasPoint))
                     {
                         HandleCanvasClick(canvasPoint);
                         e.Handled = true;
@@ -143,12 +144,12 @@ namespace DfdToolWpf
                 return false;
             }
 
-            if (!IsFrame(node))
+            if (!_frameHitTestResolver.IsFrame(node))
             {
                 return false;
             }
 
-            return IsFrameBodyOnlyLeftClick(e.GetPosition(MainCanvas));
+            return _frameHitTestResolver.IsFrameBodyOnlyLeftClick(ViewModel.Nodes, e.GetPosition(MainCanvas));
         }
 
         private bool TryGetNodeThumbFromOriginalSource(DependencyObject? source, out Thumb? thumb, out NodeViewModel? node)
@@ -189,147 +190,6 @@ namespace DfdToolWpf
             return false;
         }
 
-
-        private enum FrameHitArea
-        {
-            None,
-            Border,
-            Title,
-            Body
-        }
-
-        private bool IsFrame(NodeViewModel node)
-        {
-            return node.Type == EditorMode.CategoryFrame
-                || node.Type == EditorMode.ConnectableFrame;
-        }
-
-        private FrameHitArea GetFrameHitArea(NodeViewModel frame, Point canvasPoint)
-        {
-            if (!IsFrame(frame))
-            {
-                return FrameHitArea.None;
-            }
-
-            const double borderHitWidth = 8.0;
-            const double titleHitHeight = 28.0;
-
-            double x = canvasPoint.X - frame.X;
-            double y = canvasPoint.Y - frame.Y;
-
-            if (x < 0 || y < 0 || x > frame.Width || y > frame.Height)
-            {
-                return FrameHitArea.None;
-            }
-
-            bool onBorder =
-                x <= borderHitWidth ||
-                y <= borderHitWidth ||
-                x >= frame.Width - borderHitWidth ||
-                y >= frame.Height - borderHitWidth;
-
-            bool onTitle = y <= titleHitHeight;
-
-            if (onBorder)
-            {
-                return FrameHitArea.Border;
-            }
-
-            if (onTitle)
-            {
-                return FrameHitArea.Title;
-            }
-
-            return FrameHitArea.Body;
-        }
-
-        private List<(NodeViewModel Node, FrameHitArea Area, int Index)> GetFramesAt(Point canvasPoint)
-        {
-            return ViewModel.Nodes
-                .Select((node, index) => (Node: node, Area: GetFrameHitArea(node, canvasPoint), Index: index))
-                .Where(x => x.Area != FrameHitArea.None)
-                .ToList();
-        }
-
-        private NodeViewModel? ResolveFrameForLeftClick(Point canvasPoint)
-        {
-            var frames = GetFramesAt(canvasPoint)
-                .Where(x => x.Area == FrameHitArea.Border || x.Area == FrameHitArea.Title)
-                .ToList();
-
-            return ResolveFrameByContainmentThenFront(frames);
-        }
-
-        private NodeViewModel? ResolveFrameForRightClick(Point canvasPoint)
-        {
-            var frames = GetFramesAt(canvasPoint);
-            return ResolveFrameByContainmentThenFront(frames);
-        }
-
-        private NodeViewModel? ResolveFrameByContainmentThenFront(
-            List<(NodeViewModel Node, FrameHitArea Area, int Index)> frames)
-        {
-            if (frames.Count == 0)
-            {
-                return null;
-            }
-
-            // クリック位置にある枠の中に「完全な入れ子関係」がある場合は、
-            // 作成順やZ順ではなく、より内側の枠を優先する。
-            //
-            // 例：
-            //   外側枠 A の中に内側枠 B が完全に入っている
-            //   → A と B の両方がクリック位置にあっても、B を選ぶ。
-            //
-            // 一方、枠同士が一部だけ重なっているだけなら Depth は全て 0 になるので、
-            // その場合は従来通り Layer → Nodes内の後ろ順で前面の枠を選ぶ。
-            var rankedFrames = frames
-                .Select(frame =>
-                {
-                    int containmentDepth = frames.Count(other =>
-                        !ReferenceEquals(other.Node, frame.Node) &&
-                        ContainsFrame(other.Node, frame.Node));
-
-                    return (frame.Node, frame.Area, frame.Index, ContainmentDepth: containmentDepth);
-                })
-                .ToList();
-
-            int maxDepth = rankedFrames.Max(x => x.ContainmentDepth);
-
-            IEnumerable<(NodeViewModel Node, FrameHitArea Area, int Index, int ContainmentDepth)> candidates =
-                maxDepth > 0
-                    ? rankedFrames.Where(x => x.ContainmentDepth == maxDepth)
-                    : rankedFrames;
-
-            return candidates
-                .OrderByDescending(x => x.Node.Layer)
-                .ThenByDescending(x => x.Index)
-                .Select(x => x.Node)
-                .FirstOrDefault();
-        }
-
-        private bool ContainsFrame(NodeViewModel outer, NodeViewModel inner)
-        {
-            if (!IsFrame(outer) || !IsFrame(inner) || ReferenceEquals(outer, inner))
-            {
-                return false;
-            }
-
-            const double tolerance = 0.5;
-
-            return inner.X >= outer.X - tolerance
-                && inner.Y >= outer.Y - tolerance
-                && inner.X + inner.Width <= outer.X + outer.Width + tolerance
-                && inner.Y + inner.Height <= outer.Y + outer.Height + tolerance;
-        }
-
-        private bool IsFrameBodyOnlyLeftClick(Point canvasPoint)
-        {
-            var frames = GetFramesAt(canvasPoint);
-
-            return frames.Any()
-                && frames.All(x => x.Area == FrameHitArea.Body);
-        }
 
         private void SelectOnlyNode(NodeViewModel node)
         {
@@ -430,8 +290,8 @@ namespace DfdToolWpf
                 // 右クリックでは、枠のボディ部も枠として扱う。
                 // クリック位置にある枠を集め、完全な入れ子関係なら内側の枠を優先し、
                 // 単なる重なりなら Layer → Nodes内の後ろ順で前面の枠を選ぶ。
-                NodeViewModel? targetNode = IsFrame(node)
-                    ? ResolveFrameForRightClick(canvasPoint) ?? node
+                NodeViewModel? targetNode = _frameHitTestResolver.IsFrame(node)
+                    ? _frameHitTestResolver.ResolveFrameForRightClick(ViewModel.Nodes, canvasPoint) ?? node
                     : node;
 
                 SelectOnlyNode(targetNode);

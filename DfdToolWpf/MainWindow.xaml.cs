@@ -26,6 +26,7 @@ namespace DfdToolWpf
 
         private MainViewModel ViewModel { get; set; }
         private readonly UrlLinkService _urlLinkService = new();
+        private readonly FrameHitTestResolver _frameHitTestResolver = new();
         
         // 操作用の状態変数
         private bool isDragging = false;
