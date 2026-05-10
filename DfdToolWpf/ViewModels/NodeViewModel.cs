@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,6 +19,7 @@ namespace DfdToolWpf
             private double _height = 50;
             private string _text;
             private string _fileFormat = string.Empty;
+            private string _linkUrl = string.Empty;
             private string _imageDataBase64 = string.Empty;
             private ImageSource _imageSource;
             private string _strokeColor = "#4A90E2";
@@ -59,6 +60,7 @@ namespace DfdToolWpf
             public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
             public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
             public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
+            public string LinkUrl { get => _linkUrl; set { _linkUrl = value ?? string.Empty; OnPropertyChanged(); } }
             public string ImageDataBase64
             {
                 get => _imageDataBase64;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -19,6 +19,7 @@ namespace DfdToolWpf
             public double Height { get; set; }
             public string Text { get; set; }
             public string FileFormat { get; set; }
+            public string LinkUrl { get; set; }
             public bool IsFileFormatVisible { get; set; }
             public string StrokeColor { get; set; }
             public string FillColor { get; set; }

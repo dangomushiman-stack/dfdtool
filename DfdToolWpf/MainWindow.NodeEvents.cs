@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -31,6 +31,19 @@ namespace DfdToolWpf
             {
                 Point canvasPoint = e.GetPosition(MainCanvas);
 
+                // Ctrl+クリックは、図形に設定されたURLを既定ブラウザで開く。
+                // 通常の選択・文字編集・ドラッグ開始より優先して処理する。
+                if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    NodeViewModel linkTarget = IsFrame(node)
+                        ? ResolveFrameForRightClick(canvasPoint) ?? node
+                        : node;
+
+                    OpenUrlForNode(linkTarget, showMessageIfMissing: false);
+                    e.Handled = true;
+                    return;
+                }
+
                 // 枠をクリックしたときは、実際に押された位置を基準に対象枠を解決する。
                 // これにより、枠が重なっている場合でも「枠線・タイトルを押した枠」を優先できる。
                 if (IsFrame(node) && ViewModel.CurrentMode != EditorMode.Arrow)
@@ -49,7 +62,15 @@ namespace DfdToolWpf
                             return;
                         }
 
-                        SelectOnlyNode(frameForLeftClick);
+                        // 範囲選択などで複数選択されている状態の図形をドラッグ開始する場合は、
+                        // ここで単独選択に戻さない。
+                        // 単独選択に戻してしまうと Node_DragStarted 時点で選択数が1になり、
+                        // 複数図形ドラッグではなく、クリックした1図形だけの移動になってしまう。
+                        bool preserveMultiSelectionForDrag = ShouldPreserveMultiSelectionForDrag(frameForLeftClick);
+                        if (!preserveMultiSelectionForDrag)
+                        {
+                            SelectOnlyNode(frameForLeftClick);
+                        }
 
                         // 枠線・タイトルを押したときは、Thumb 自体の DragStarted/DragDelta に
                         // イベントを渡す必要がある。ここで e.Handled = true にすると、
@@ -72,14 +93,7 @@ namespace DfdToolWpf
                     // 図形配置モードなら、枠の内側にもそのまま図形を配置できる。
                     if (IsFrameBodyOnlyLeftClick(canvasPoint))
                     {
-                        if (ShouldStartRangeSelection())
-                        {
-                            BeginRangeSelection(canvasPoint);
-                        }
-                        else
-                        {
-                            HandleCanvasClick(canvasPoint);
-                        }
+                        HandleCanvasClick(canvasPoint);
                         e.Handled = true;
                         return;
                     }
@@ -102,15 +116,18 @@ namespace DfdToolWpf
                     return;
                 }
 
-                // 範囲選択後に複数選択されている状態で、選択済みノードをドラッグした場合は
-                // 複数選択を維持したままグループ移動できるようにする。
-                if (ViewModel.CurrentMode == EditorMode.Select && node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1)
+                // 範囲選択などで複数選択されている状態の図形をドラッグ開始する場合は、
+                // ここで選択を1つに絞らず、そのまま Thumb の DragStarted/DragDelta に渡す。
+                if (!ShouldPreserveMultiSelectionForDrag(node))
                 {
-                    return;
+                    SelectOnlyNode(node);
                 }
-
-                SelectOnlyNode(node);
             }
+        }
+
+        private bool ShouldPreserveMultiSelectionForDrag(NodeViewModel node)
+        {
+            return node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1;
         }
 
         private bool IsFrameBodyCanvasClick(MouseButtonEventArgs e)
@@ -440,7 +457,7 @@ namespace DfdToolWpf
 
         private void MenuItem_PasteSymbol_Click(object sender, RoutedEventArgs e)
         {
-            if (!ViewModel.PasteCopiedNode())
+            if (!PasteCopiedNodeAtCurrentPosition())
             {
                 MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
             }
@@ -452,6 +469,189 @@ namespace DfdToolWpf
             {
                 MessageBox.Show("複製するシンボルを選択してください。", "シンボルコピー");
             }
+        }
+
+        private void MenuItem_OpenUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node != null)
+                {
+                    OpenUrlForNode(node, showMessageIfMissing: true);
+                }
+            }
+        }
+
+        private void MenuItem_SetUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node == null) return;
+
+                string? input = ShowUrlInputDialog(node.LinkUrl);
+                if (input == null)
+                {
+                    return;
+                }
+
+                string trimmed = input.Trim();
+                if (trimmed.Length == 0)
+                {
+                    ViewModel.SaveUndoState();
+                    node.LinkUrl = string.Empty;
+                    return;
+                }
+
+                string? normalizedUrl = NormalizeHttpUrl(trimmed);
+                if (normalizedUrl == null)
+                {
+                    MessageBox.Show("URLが正しくありません。\nhttp:// または https:// で始まるURLを指定してください。", "URLリンク");
+                    return;
+                }
+
+                ViewModel.SaveUndoState();
+                node.LinkUrl = normalizedUrl;
+            }
+        }
+
+        private void MenuItem_ClearUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node == null) return;
+
+                if (string.IsNullOrWhiteSpace(node.LinkUrl))
+                {
+                    return;
+                }
+
+                ViewModel.SaveUndoState();
+                node.LinkUrl = string.Empty;
+            }
+        }
+
+        private void OpenUrlForNode(NodeViewModel node, bool showMessageIfMissing)
+        {
+            string? normalizedUrl = NormalizeHttpUrl(node.LinkUrl);
+            if (normalizedUrl == null)
+            {
+                if (showMessageIfMissing)
+                {
+                    MessageBox.Show("この図形にはURLリンクが設定されていません。", "URLリンク");
+                }
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = normalizedUrl,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("URLを開けませんでした。\n" + ex.Message, "URLリンク");
+            }
+        }
+
+        private string? NormalizeHttpUrl(string? url)
+        {
+            string value = (url ?? string.Empty).Trim();
+            if (value.Length == 0)
+            {
+                return null;
+            }
+
+            if (!value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                value = "https://" + value;
+            }
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                return uri.AbsoluteUri;
+            }
+
+            return null;
+        }
+
+        private string? ShowUrlInputDialog(string currentUrl)
+        {
+            var dialog = new Window
+            {
+                Title = "URLリンクを設定",
+                Owner = this,
+                Width = 480,
+                Height = 150,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var root = new Grid { Margin = new Thickness(12) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var label = new TextBlock
+            {
+                Text = "URL:",
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+            Grid.SetRow(label, 0);
+            root.Children.Add(label);
+
+            var textBox = new TextBox
+            {
+                Text = currentUrl ?? string.Empty,
+                MinWidth = 430
+            };
+            Grid.SetRow(textBox, 1);
+            root.Children.Add(textBox);
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+
+            var okButton = new Button
+            {
+                Content = "OK",
+                Width = 80,
+                Margin = new Thickness(0, 0, 8, 0),
+                IsDefault = true
+            };
+            okButton.Click += (_, _) =>
+            {
+                dialog.DialogResult = true;
+                dialog.Close();
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "キャンセル",
+                Width = 90,
+                IsCancel = true
+            };
+
+            buttons.Children.Add(okButton);
+            buttons.Children.Add(cancelButton);
+            Grid.SetRow(buttons, 2);
+            root.Children.Add(buttons);
+
+            dialog.Content = root;
+            textBox.SelectAll();
+            textBox.Focus();
+
+            return dialog.ShowDialog() == true ? textBox.Text : null;
         }
 
         private void MenuItem_FileFormatVisible_Click(object sender, RoutedEventArgs e)
@@ -555,6 +755,14 @@ namespace DfdToolWpf
                     if (hitSheetCount == 0)
                     {
                         MessageBox.Show("他のシートには、同じシンボルと同じ文字列のオブジェクトは見つかりませんでした。", "検索結果");
+                        return;
+                    }
+
+                    var firstHit = ViewModel.FindFirstSameNodeInOtherSheets(node);
+                    if (firstHit.HasValue)
+                    {
+                        ViewModel.SelectedSheet = firstHit.Value.Sheet;
+                        SelectNodeAndCenterInView(firstHit.Value.Node);
                     }
                 }
             }

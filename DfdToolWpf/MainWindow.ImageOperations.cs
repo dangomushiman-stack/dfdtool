@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -73,10 +73,10 @@ namespace DfdToolWpf
             }
 
             var size = GetDisplayImageSize(pixelWidth, pixelHeight);
-            Point center = GetCurrentPastePointOnCanvas();
+            Point pastePoint = GetCurrentPastePointOnCanvas();
 
-            double x = Snap(center.X - size.Width / 2.0);
-            double y = Snap(center.Y - size.Height / 2.0);
+            double x = Snap(pastePoint.X);
+            double y = Snap(pastePoint.Y);
 
             ViewModel.AddImageNode(Convert.ToBase64String(bytes), x, y, size.Width, size.Height);
         }

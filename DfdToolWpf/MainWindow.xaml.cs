@@ -19,6 +19,10 @@ namespace DfdToolWpf
     {
         private const string InternalSymbolClipboardFormat = "DfdToolWpf.InternalSymbolCopy";
 
+        // 左クリック・右クリックしたキャンバス座標を、貼り付け位置として記憶する。
+        private Point lastPastePointOnCanvas;
+        private bool hasLastPastePointOnCanvas = false;
+
         private MainViewModel ViewModel { get; set; }
         
         // 操作用の状態変数
@@ -51,10 +55,6 @@ namespace DfdToolWpf
         private double multiDragAccumulatedX;
         private double multiDragAccumulatedY;
 
-        // 画像貼り付け位置用。最後にマウスがあったキャンバス座標を覚えておく。
-        // 値がない場合は表示領域の中央に貼り付ける。
-        private Point? currentPastePointOnCanvas;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -70,6 +70,8 @@ namespace DfdToolWpf
             Closing += MainWindow_Closing;
             UpdateWindowTitle();
         }
+
+
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -153,13 +155,13 @@ namespace DfdToolWpf
             {
                 if (ShouldPasteCopiedSymbolFirst())
                 {
-                    ViewModel.PasteCopiedNode();
+                    PasteCopiedNodeAtCurrentPosition();
                 }
                 else if (Clipboard.ContainsImage())
                 {
                     PasteImageFromClipboard();
                 }
-                else if (!ViewModel.PasteCopiedNode())
+                else if (!PasteCopiedNodeAtCurrentPosition())
                 {
                     MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
                 }
@@ -206,23 +208,6 @@ namespace DfdToolWpf
                 // クリップボードが一時的に他プロセスに使用されている場合でも、
                 // アプリ内コピー自体は有効なので何もしない。
             }
-        }
-
-        private void UpdateCurrentPastePointFromMouse()
-        {
-            try
-            {
-                currentPastePointOnCanvas = Mouse.GetPosition(MainCanvas);
-            }
-            catch
-            {
-                // MainCanvas がまだ初期化中などの場合は、貼り付け時に中央へフォールバックする。
-            }
-        }
-
-        private Point GetCurrentPastePointOnCanvas()
-        {
-            return currentPastePointOnCanvas ?? GetViewportCenterOnCanvas();
         }
 
         private bool IsTextEditingNow()
