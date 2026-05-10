@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -16,20 +16,9 @@ namespace DfdToolWpf
 {
     public partial class MainWindow
     {
-        protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
-        {
-            UpdateCurrentPastePointFromMouse(e);
-            base.OnPreviewMouseLeftButtonDown(e);
-        }
-
-        protected override void OnPreviewMouseRightButtonDown(MouseButtonEventArgs e)
-        {
-            UpdateCurrentPastePointFromMouse(e);
-            base.OnPreviewMouseRightButtonDown(e);
-        }
-
         protected override void OnMouseWheel(MouseWheelEventArgs e)
         {
+            UpdateCurrentPastePointFromMouse();
             double zoomFactor = e.Delta > 0 ? 1.1 : 1 / 1.1;
             
             if (MainScale.ScaleX * zoomFactor < 0.2 || MainScale.ScaleX * zoomFactor > 5.0) return;
@@ -59,6 +48,7 @@ namespace DfdToolWpf
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            UpdateCurrentPastePointFromMouse();
             if (isPanning)
             {
                 Point currentPoint = e.GetPosition(ViewportContainer);

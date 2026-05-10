@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -72,7 +72,14 @@ namespace DfdToolWpf
                     // 図形配置モードなら、枠の内側にもそのまま図形を配置できる。
                     if (IsFrameBodyOnlyLeftClick(canvasPoint))
                     {
-                        HandleCanvasClick(canvasPoint);
+                        if (ShouldStartRangeSelection())
+                        {
+                            BeginRangeSelection(canvasPoint);
+                        }
+                        else
+                        {
+                            HandleCanvasClick(canvasPoint);
+                        }
                         e.Handled = true;
                         return;
                     }
@@ -92,6 +99,13 @@ namespace DfdToolWpf
                 {
                     ViewModel.HandleNodeClick(node);
                     e.Handled = true;
+                    return;
+                }
+
+                // 範囲選択後に複数選択されている状態で、選択済みノードをドラッグした場合は
+                // 複数選択を維持したままグループ移動できるようにする。
+                if (ViewModel.CurrentMode == EditorMode.Select && node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1)
+                {
                     return;
                 }
 
@@ -313,6 +327,18 @@ namespace DfdToolWpf
             if (((Thumb)sender).DataContext is NodeViewModel node)
             {
                 ViewModel.SaveUndoState();
+
+                if (node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1)
+                {
+                    multiDragStartPositions = ViewModel.Nodes
+                        .Where(n => n.IsSelected)
+                        .ToDictionary(n => n, n => new Point(n.X, n.Y));
+                    multiDragAccumulatedX = 0;
+                    multiDragAccumulatedY = 0;
+                    return;
+                }
+
+                multiDragStartPositions = null;
                 dragRawX = node.X;
                 dragRawY = node.Y;
             }
@@ -324,6 +350,21 @@ namespace DfdToolWpf
         {
             if (ViewModel.CurrentMode != EditorMode.Arrow && ((Thumb)sender).DataContext is NodeViewModel node)
             {
+                if (multiDragStartPositions != null && node.IsSelected && multiDragStartPositions.Count > 1)
+                {
+                    multiDragAccumulatedX += e.HorizontalChange;
+                    multiDragAccumulatedY += e.VerticalChange;
+
+                    foreach (var item in multiDragStartPositions)
+                    {
+                        item.Key.X = Snap(item.Value.X + multiDragAccumulatedX);
+                        item.Key.Y = Snap(item.Value.Y + multiDragAccumulatedY);
+                    }
+
+                    e.Handled = true;
+                    return;
+                }
+
                 dragRawX += e.HorizontalChange;
                 dragRawY += e.VerticalChange;
 
@@ -399,7 +440,7 @@ namespace DfdToolWpf
 
         private void MenuItem_PasteSymbol_Click(object sender, RoutedEventArgs e)
         {
-            if (!PasteCopiedNodeAtCurrentPosition())
+            if (!ViewModel.PasteCopiedNode())
             {
                 MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
             }
@@ -514,14 +555,6 @@ namespace DfdToolWpf
                     if (hitSheetCount == 0)
                     {
                         MessageBox.Show("他のシートには、同じシンボルと同じ文字列のオブジェクトは見つかりませんでした。", "検索結果");
-                        return;
-                    }
-
-                    var firstHit = ViewModel.FindFirstSameNodeInOtherSheets(node);
-                    if (firstHit.HasValue)
-                    {
-                        ViewModel.SelectedSheet = firstHit.Value.Sheet;
-                        SelectNodeAndCenterInView(firstHit.Value.Node);
                     }
                 }
             }

@@ -197,39 +197,15 @@ namespace DfdToolWpf
                     // ユーザー要望は「別の該当シートをオレンジでマーク」なので、現在のシートはマークしない。
                     if (sheet == SelectedSheet) continue;
     
-                    bool found = sheet.Nodes.Any(n => IsSameSearchTarget(n, sourceNode, targetText));
+                    bool found = sheet.Nodes.Any(n =>
+                        n.Type == sourceNode.Type &&
+                        NormalizeSearchText(n.Text) == targetText);
     
                     sheet.IsSearchHit = found;
                     if (found) hitSheetCount++;
                 }
     
                 return hitSheetCount;
-            }
-
-            public (DiagramSheetViewModel Sheet, NodeViewModel Node)? FindFirstSameNodeInOtherSheets(NodeViewModel sourceNode)
-            {
-                if (sourceNode == null) return null;
-
-                string targetText = NormalizeSearchText(sourceNode.Text);
-
-                foreach (var sheet in Sheets)
-                {
-                    if (sheet == SelectedSheet) continue;
-
-                    var foundNode = sheet.Nodes.FirstOrDefault(n => IsSameSearchTarget(n, sourceNode, targetText));
-                    if (foundNode != null)
-                    {
-                        return (sheet, foundNode);
-                    }
-                }
-
-                return null;
-            }
-
-            private bool IsSameSearchTarget(NodeViewModel node, NodeViewModel sourceNode, string normalizedSourceText)
-            {
-                return node.Type == sourceNode.Type
-                    && NormalizeSearchText(node.Text) == normalizedSourceText;
             }
     
             private string NormalizeSearchText(string text)
@@ -282,31 +258,11 @@ namespace DfdToolWpf
     
             public bool PasteCopiedNode()
             {
-                if (copiedNodeData == null) return false;
-                double offset = 20 * copiedNodePasteCount;
-                return PasteCopiedNodeAt(copiedNodeData.X + offset, copiedNodeData.Y + offset);
-            }
-
-            public bool PasteCopiedNodeAt(double targetX, double targetY)
-            {
                 if (SelectedSheet == null || copiedNodeData == null) return false;
                 SaveUndoState();
-
-                double pasteX = targetX;
-                double pasteY = targetY;
-
-                // クリック位置がコピー元と完全に同じ場合は、貼り付いたことが見えるように右下へずらす。
-                // 連続で貼り付けた場合は、20pxずつ追加でずらす。
-                if (IsSameCoordinate(pasteX, copiedNodeData.X) && IsSameCoordinate(pasteY, copiedNodeData.Y))
-                {
-                    double offset = 20 * copiedNodePasteCount;
-                    pasteX += offset;
-                    pasteY += offset;
-                }
-
-                double offsetX = pasteX - copiedNodeData.X;
-                double offsetY = pasteY - copiedNodeData.Y;
-                var pastedNode = CreateNodeFromData(copiedNodeData, offsetX, offsetY);
+    
+                double offset = 20 * copiedNodePasteCount;
+                var pastedNode = CreateNodeFromData(copiedNodeData, offset, offset);
     
                 ResetSelection();
                 pastedNode.IsSelected = true;
@@ -314,11 +270,6 @@ namespace DfdToolWpf
     
                 copiedNodePasteCount++;
                 return true;
-            }
-
-            private bool IsSameCoordinate(double a, double b)
-            {
-                return Math.Abs(a - b) < 0.001;
             }
     
             public bool DuplicateSelectedNode()
@@ -497,21 +448,26 @@ namespace DfdToolWpf
             public void DeleteSelected()
             {
                 if (SelectedSheet == null) return;
-                if (!Nodes.Any(n => n.IsSelected) && !Connections.Any(c => c.IsSelected)) return;
+
+                var selectedNodes = Nodes.Where(n => n.IsSelected).ToList();
+                var selectedConnections = Connections.Where(c => c.IsSelected).ToList();
+
+                if (!selectedNodes.Any() && !selectedConnections.Any()) return;
                 SaveUndoState();
-    
-                var selectedNode = Nodes.FirstOrDefault(n => n.IsSelected);
-                if (selectedNode != null)
+
+                var connectionsToRemove = Connections
+                    .Where(c => selectedConnections.Contains(c) || selectedNodes.Contains(c.Source) || selectedNodes.Contains(c.Target))
+                    .Distinct()
+                    .ToList();
+
+                foreach (var conn in connectionsToRemove)
                 {
-                    var relatedConnections = Connections.Where(c => c.Source == selectedNode || c.Target == selectedNode).ToList();
-                    foreach (var conn in relatedConnections) Connections.Remove(conn);
-                    Nodes.Remove(selectedNode);
+                    Connections.Remove(conn);
                 }
-    
-                var selectedConnection = Connections.FirstOrDefault(c => c.IsSelected);
-                if (selectedConnection != null)
+
+                foreach (var node in selectedNodes)
                 {
-                    Connections.Remove(selectedConnection);
+                    Nodes.Remove(node);
                 }
             }
     

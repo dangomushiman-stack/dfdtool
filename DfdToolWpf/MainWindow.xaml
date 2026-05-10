@@ -23,6 +23,7 @@
         </Menu>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Background="#EEE" Height="40">
+            <RadioButton Content="範囲選択" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Select" Background="#F5F5F5" />
             <RadioButton Content="プロセス" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Process" IsChecked="True" />
             <RadioButton Content="実体" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Entity" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
@@ -128,7 +129,7 @@
         </DockPanel>
 
         <Grid x:Name="ViewportContainer" ClipToBounds="True">
-            <Canvas x:Name="MainCanvas" Focusable="True" Background="Transparent" MouseLeftButtonDown="Canvas_MouseLeftButtonDown">
+            <Canvas x:Name="MainCanvas" Focusable="True" Background="Transparent" MouseLeftButtonDown="Canvas_MouseLeftButtonDown" MouseMove="Canvas_MouseMove" MouseLeftButtonUp="Canvas_MouseLeftButtonUp">
                 
                 <Canvas.RenderTransform>
                     <TransformGroup>
@@ -156,6 +157,15 @@
                         </DrawingBrush>
                     </Rectangle.Fill>
                 </Rectangle>
+
+                <Rectangle x:Name="RangeSelectionRectangle"
+                           Visibility="Collapsed"
+                           Fill="#22007ACC"
+                           Stroke="#007ACC"
+                           StrokeThickness="1"
+                           StrokeDashArray="4 2"
+                           IsHitTestVisible="False"
+                           Panel.ZIndex="2000" />
 
                 <ItemsControl ItemsSource="{Binding Connections}" Panel.ZIndex="10">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
