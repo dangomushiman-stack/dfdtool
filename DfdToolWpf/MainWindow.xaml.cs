@@ -27,6 +27,7 @@ namespace DfdToolWpf
         private MainViewModel ViewModel { get; set; }
         private readonly UrlLinkService _urlLinkService = new();
         private readonly FrameHitTestResolver _frameHitTestResolver = new();
+        private readonly RangeSelectionController _rangeSelectionController = new();
         
         // 操作用の状態変数
         private bool isDragging = false;
@@ -48,10 +49,6 @@ namespace DfdToolWpf
         // 吹き出し先端ドラッグ用：グリッドスナップONでも細かいDragDeltaを累積する
         private double tailRawX;
         private double tailRawY;
-
-        // 範囲選択用
-        private bool isRangeSelecting = false;
-        private Point rangeSelectionStartPoint;
 
         // 複数選択ノードのグループドラッグ用
         private Dictionary<NodeViewModel, Point>? multiDragStartPositions;

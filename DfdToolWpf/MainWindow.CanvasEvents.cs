@@ -1,16 +1,8 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using Microsoft.Win32;
 
 namespace DfdToolWpf
 {
@@ -54,7 +46,7 @@ namespace DfdToolWpf
 
         private void Canvas_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!isRangeSelecting)
+            if (!_rangeSelectionController.IsSelecting)
             {
                 return;
             }
@@ -65,7 +57,7 @@ namespace DfdToolWpf
 
         private void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (!isRangeSelecting)
+            if (!_rangeSelectionController.IsSelecting)
             {
                 return;
             }
@@ -83,8 +75,7 @@ namespace DfdToolWpf
 
         private void BeginRangeSelection(Point startPoint)
         {
-            isRangeSelecting = true;
-            rangeSelectionStartPoint = startPoint;
+            _rangeSelectionController.Begin(startPoint);
 
             Canvas.SetLeft(RangeSelectionRectangle, startPoint.X);
             Canvas.SetTop(RangeSelectionRectangle, startPoint.Y);
@@ -97,7 +88,7 @@ namespace DfdToolWpf
 
         private void UpdateRangeSelectionRectangle(Point currentPoint)
         {
-            Rect rect = CreateNormalizedRect(rangeSelectionStartPoint, currentPoint);
+            Rect rect = _rangeSelectionController.Update(currentPoint);
             Canvas.SetLeft(RangeSelectionRectangle, rect.X);
             Canvas.SetTop(RangeSelectionRectangle, rect.Y);
             RangeSelectionRectangle.Width = rect.Width;
@@ -106,47 +97,15 @@ namespace DfdToolWpf
 
         private void CompleteRangeSelection(Point endPoint)
         {
-            Rect rect = CreateNormalizedRect(rangeSelectionStartPoint, endPoint);
+            var selectedNodes = _rangeSelectionController.Complete(endPoint, ViewModel.Nodes);
 
-            isRangeSelecting = false;
             RangeSelectionRectangle.Visibility = Visibility.Collapsed;
             MainCanvas.ReleaseMouseCapture();
 
-            ApplyRangeSelection(rect);
-        }
-
-        private Rect CreateNormalizedRect(Point p1, Point p2)
-        {
-            return new Rect(
-                Math.Min(p1.X, p2.X),
-                Math.Min(p1.Y, p2.Y),
-                Math.Abs(p2.X - p1.X),
-                Math.Abs(p2.Y - p1.Y));
-        }
-
-        private void ApplyRangeSelection(Rect selectionRect)
-        {
-            // クリック同然の小さな範囲なら、通常のキャンバスクリックと同じく選択解除だけにする。
-            if (selectionRect.Width < 4 && selectionRect.Height < 4)
-            {
-                ViewModel.ResetSelection();
-                return;
-            }
-
             ViewModel.ResetSelection();
-
-            if (ViewModel.Nodes == null)
+            foreach (var node in selectedNodes)
             {
-                return;
-            }
-
-            foreach (var node in ViewModel.Nodes)
-            {
-                Rect nodeRect = new Rect(node.X, node.Y, node.Width, node.Height);
-                if (selectionRect.IntersectsWith(nodeRect))
-                {
-                    node.IsSelected = true;
-                }
+                node.IsSelected = true;
             }
         }
 
