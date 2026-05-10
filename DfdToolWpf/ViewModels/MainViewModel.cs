@@ -197,15 +197,39 @@ namespace DfdToolWpf
                     // ユーザー要望は「別の該当シートをオレンジでマーク」なので、現在のシートはマークしない。
                     if (sheet == SelectedSheet) continue;
     
-                    bool found = sheet.Nodes.Any(n =>
-                        n.Type == sourceNode.Type &&
-                        NormalizeSearchText(n.Text) == targetText);
+                    bool found = sheet.Nodes.Any(n => IsSameSearchTarget(n, sourceNode, targetText));
     
                     sheet.IsSearchHit = found;
                     if (found) hitSheetCount++;
                 }
     
                 return hitSheetCount;
+            }
+
+            public (DiagramSheetViewModel Sheet, NodeViewModel Node)? FindFirstSameNodeInOtherSheets(NodeViewModel sourceNode)
+            {
+                if (sourceNode == null) return null;
+
+                string targetText = NormalizeSearchText(sourceNode.Text);
+
+                foreach (var sheet in Sheets)
+                {
+                    if (sheet == SelectedSheet) continue;
+
+                    var foundNode = sheet.Nodes.FirstOrDefault(n => IsSameSearchTarget(n, sourceNode, targetText));
+                    if (foundNode != null)
+                    {
+                        return (sheet, foundNode);
+                    }
+                }
+
+                return null;
+            }
+
+            private bool IsSameSearchTarget(NodeViewModel node, NodeViewModel sourceNode, string normalizedSourceText)
+            {
+                return node.Type == sourceNode.Type
+                    && NormalizeSearchText(node.Text) == normalizedSourceText;
             }
     
             private string NormalizeSearchText(string text)

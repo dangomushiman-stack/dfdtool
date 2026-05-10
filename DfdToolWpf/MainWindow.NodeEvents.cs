@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -514,6 +514,14 @@ namespace DfdToolWpf
                     if (hitSheetCount == 0)
                     {
                         MessageBox.Show("他のシートには、同じシンボルと同じ文字列のオブジェクトは見つかりませんでした。", "検索結果");
+                        return;
+                    }
+
+                    var firstHit = ViewModel.FindFirstSameNodeInOtherSheets(node);
+                    if (firstHit.HasValue)
+                    {
+                        ViewModel.SelectedSheet = firstHit.Value.Sheet;
+                        SelectNodeAndCenterInView(firstHit.Value.Node);
                     }
                 }
             }

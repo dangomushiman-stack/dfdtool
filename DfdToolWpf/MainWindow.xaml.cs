@@ -57,6 +57,38 @@ namespace DfdToolWpf
             UpdateWindowTitle();
         }
 
+
+
+        private void SelectNodeAndCenterInView(NodeViewModel node)
+        {
+            if (node == null) return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ViewModel.ResetSelection();
+                node.IsSelected = true;
+                CenterNodeInView(node);
+                MainCanvas.Focus();
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void CenterNodeInView(NodeViewModel node)
+        {
+            if (node == null) return;
+
+            double scaleX = Math.Abs(MainScale.ScaleX) < 0.0001 ? 1.0 : MainScale.ScaleX;
+            double scaleY = Math.Abs(MainScale.ScaleY) < 0.0001 ? 1.0 : MainScale.ScaleY;
+
+            double viewportWidth = ViewportContainer.ActualWidth > 0 ? ViewportContainer.ActualWidth : ActualWidth;
+            double viewportHeight = ViewportContainer.ActualHeight > 0 ? ViewportContainer.ActualHeight : ActualHeight;
+
+            double nodeCenterX = node.X + node.Width / 2.0;
+            double nodeCenterY = node.Y + node.Height / 2.0;
+
+            MainTranslate.X = viewportWidth / 2.0 - nodeCenterX * scaleX;
+            MainTranslate.Y = viewportHeight / 2.0 - nodeCenterY * scaleY;
+        }
+
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (!ConfirmSaveIfDirty())
