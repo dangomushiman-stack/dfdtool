@@ -504,7 +504,7 @@ namespace DfdToolWpf
                     return;
                 }
 
-                string? normalizedUrl = NormalizeHttpUrl(trimmed);
+                string? normalizedUrl = _urlLinkService.NormalizeHttpUrl(trimmed);
                 if (normalizedUrl == null)
                 {
                     MessageBox.Show("URLが正しくありません。\nhttp:// または https:// で始まるURLを指定してください。", "URLリンク");
@@ -535,7 +535,7 @@ namespace DfdToolWpf
 
         private void OpenUrlForNode(NodeViewModel node, bool showMessageIfMissing)
         {
-            string? normalizedUrl = NormalizeHttpUrl(node.LinkUrl);
+            string? normalizedUrl = _urlLinkService.NormalizeHttpUrl(node.LinkUrl);
             if (normalizedUrl == null)
             {
                 if (showMessageIfMissing)
@@ -547,39 +547,12 @@ namespace DfdToolWpf
 
             try
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = normalizedUrl,
-                    UseShellExecute = true
-                });
+                _urlLinkService.OpenUrl(normalizedUrl);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("URLを開けませんでした。\n" + ex.Message, "URLリンク");
             }
-        }
-
-        private string? NormalizeHttpUrl(string? url)
-        {
-            string value = (url ?? string.Empty).Trim();
-            if (value.Length == 0)
-            {
-                return null;
-            }
-
-            if (!value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                !value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                value = "https://" + value;
-            }
-
-            if (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-            {
-                return uri.AbsoluteUri;
-            }
-
-            return null;
         }
 
         private string? ShowUrlInputDialog(string currentUrl)

@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
+using DfdToolWpf.Services;
 
 namespace DfdToolWpf
 {
@@ -24,6 +25,7 @@ namespace DfdToolWpf
         private bool hasLastPastePointOnCanvas = false;
 
         private MainViewModel ViewModel { get; set; }
+        private readonly UrlLinkService _urlLinkService = new();
         
         // 操作用の状態変数
         private bool isDragging = false;
