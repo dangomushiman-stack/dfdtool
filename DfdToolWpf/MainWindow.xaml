@@ -378,7 +378,7 @@
                                                               IsChecked="{Binding IsFileFormatVisible, Mode=TwoWay}"
                                                               Click="MenuItem_FileFormatVisible_Click"/>
                                                     <Separator/>
-                                                    <MenuItem Header="🔍 同じシンボルと文字列を検索" Click="MenuItem_SearchSameSymbolText_Click"/>
+                                                    <MenuItem Header="同じシンボルと文字列を検索" Click="MenuItem_SearchSameSymbolText_Click"/>
                                                     <MenuItem Header="検索マークをクリア" Click="MenuItem_ClearSearchMarks_Click"/>
                                                 </ContextMenu>
                                             </Grid.ContextMenu>
