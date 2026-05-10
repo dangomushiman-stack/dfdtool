@@ -16,6 +16,18 @@ namespace DfdToolWpf
 {
     public partial class MainWindow
     {
+        protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
+        {
+            UpdateCurrentPastePointFromMouse(e);
+            base.OnPreviewMouseLeftButtonDown(e);
+        }
+
+        protected override void OnPreviewMouseRightButtonDown(MouseButtonEventArgs e)
+        {
+            UpdateCurrentPastePointFromMouse(e);
+            base.OnPreviewMouseRightButtonDown(e);
+        }
+
         protected override void OnMouseWheel(MouseWheelEventArgs e)
         {
             double zoomFactor = e.Delta > 0 ? 1.1 : 1 / 1.1;

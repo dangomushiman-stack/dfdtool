@@ -282,11 +282,31 @@ namespace DfdToolWpf
     
             public bool PasteCopiedNode()
             {
+                if (copiedNodeData == null) return false;
+                double offset = 20 * copiedNodePasteCount;
+                return PasteCopiedNodeAt(copiedNodeData.X + offset, copiedNodeData.Y + offset);
+            }
+
+            public bool PasteCopiedNodeAt(double targetX, double targetY)
+            {
                 if (SelectedSheet == null || copiedNodeData == null) return false;
                 SaveUndoState();
-    
-                double offset = 20 * copiedNodePasteCount;
-                var pastedNode = CreateNodeFromData(copiedNodeData, offset, offset);
+
+                double pasteX = targetX;
+                double pasteY = targetY;
+
+                // クリック位置がコピー元と完全に同じ場合は、貼り付いたことが見えるように右下へずらす。
+                // 連続で貼り付けた場合は、20pxずつ追加でずらす。
+                if (IsSameCoordinate(pasteX, copiedNodeData.X) && IsSameCoordinate(pasteY, copiedNodeData.Y))
+                {
+                    double offset = 20 * copiedNodePasteCount;
+                    pasteX += offset;
+                    pasteY += offset;
+                }
+
+                double offsetX = pasteX - copiedNodeData.X;
+                double offsetY = pasteY - copiedNodeData.Y;
+                var pastedNode = CreateNodeFromData(copiedNodeData, offsetX, offsetY);
     
                 ResetSelection();
                 pastedNode.IsSelected = true;
@@ -294,6 +314,11 @@ namespace DfdToolWpf
     
                 copiedNodePasteCount++;
                 return true;
+            }
+
+            private bool IsSameCoordinate(double a, double b)
+            {
+                return Math.Abs(a - b) < 0.001;
             }
     
             public bool DuplicateSelectedNode()

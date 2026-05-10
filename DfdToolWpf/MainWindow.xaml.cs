@@ -18,6 +18,10 @@ namespace DfdToolWpf
     {
         private const string InternalSymbolClipboardFormat = "DfdToolWpf.InternalSymbolCopy";
 
+        // 左クリック・右クリックしたキャンバス座標を、貼り付け位置として記憶する。
+        private Point lastPastePointOnCanvas;
+        private bool hasLastPastePointOnCanvas = false;
+
         private MainViewModel ViewModel { get; set; }
         
         // 操作用の状態変数
@@ -171,13 +175,13 @@ namespace DfdToolWpf
             {
                 if (ShouldPasteCopiedSymbolFirst())
                 {
-                    ViewModel.PasteCopiedNode();
+                    PasteCopiedNodeAtCurrentPosition();
                 }
                 else if (Clipboard.ContainsImage())
                 {
                     PasteImageFromClipboard();
                 }
-                else if (!ViewModel.PasteCopiedNode())
+                else if (!PasteCopiedNodeAtCurrentPosition())
                 {
                     MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
                 }
@@ -224,6 +228,53 @@ namespace DfdToolWpf
                 // クリップボードが一時的に他プロセスに使用されている場合でも、
                 // アプリ内コピー自体は有効なので何もしない。
             }
+        }
+
+        private bool PasteCopiedNodeAtCurrentPosition()
+        {
+            Point pastePoint = GetCurrentPastePointOnCanvas();
+            return ViewModel.PasteCopiedNodeAt(Snap(pastePoint.X), Snap(pastePoint.Y));
+        }
+
+        private Point GetCurrentPastePointOnCanvas()
+        {
+            return hasLastPastePointOnCanvas
+                ? lastPastePointOnCanvas
+                : GetViewportCenterOnCanvas();
+        }
+
+        private void UpdateCurrentPastePointFromMouse(MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is not DependencyObject source)
+            {
+                return;
+            }
+
+            // メニューやツールバー上のクリックでは貼り付け位置を更新しない。
+            // キャンバス、ノード、接続線など MainCanvas 配下で発生したクリックだけを記憶する。
+            if (!IsDescendantOf(source, MainCanvas))
+            {
+                return;
+            }
+
+            lastPastePointOnCanvas = e.GetPosition(MainCanvas);
+            hasLastPastePointOnCanvas = true;
+        }
+
+        private bool IsDescendantOf(DependencyObject source, DependencyObject ancestor)
+        {
+            DependencyObject? current = source;
+            while (current != null)
+            {
+                if (ReferenceEquals(current, ancestor))
+                {
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
 
         private bool IsTextEditingNow()

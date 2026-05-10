@@ -399,7 +399,7 @@ namespace DfdToolWpf
 
         private void MenuItem_PasteSymbol_Click(object sender, RoutedEventArgs e)
         {
-            if (!ViewModel.PasteCopiedNode())
+            if (!PasteCopiedNodeAtCurrentPosition())
             {
                 MessageBox.Show("貼り付けるシンボルがコピーされていません。", "シンボルコピー");
             }
