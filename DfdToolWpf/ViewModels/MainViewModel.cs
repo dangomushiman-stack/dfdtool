@@ -27,6 +27,7 @@ namespace DfdToolWpf
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Nodes));
                     OnPropertyChanged(nameof(Connections));
+                    OnPropertyChanged(nameof(BranchPoints));
                     OnPropertyChanged(nameof(CanDeleteSheet));
                 }
             }
@@ -34,6 +35,7 @@ namespace DfdToolWpf
             // 既存XAML・既存処理との互換用。現在選択中のシートの内容を返す。
             public ObservableCollection<NodeViewModel> Nodes => SelectedSheet?.Nodes;
             public ObservableCollection<ConnectionViewModel> Connections => SelectedSheet?.Connections;
+            public ObservableCollection<BranchPointViewModel> BranchPoints => SelectedSheet?.BranchPoints;
     
             public bool CanDeleteSheet => Sheets.Count > 1;
     
@@ -49,6 +51,18 @@ namespace DfdToolWpf
     
             private bool _snapToGrid = true;
             public bool SnapToGrid { get => _snapToGrid; set { _snapToGrid = value; OnPropertyChanged(); } }
+
+            private bool _isGridVisible = true;
+            public bool IsGridVisible
+            {
+                get => _isGridVisible;
+                set
+                {
+                    if (_isGridVisible == value) return;
+                    _isGridVisible = value;
+                    OnPropertyChanged();
+                }
+            }
 
             private const int MaxUndoHistory = 50;
             private readonly Stack<DfdSaveData> undoStack = new Stack<DfdSaveData>();
@@ -90,6 +104,26 @@ namespace DfdToolWpf
             public MainViewModel()
             {
                 AddSheet("Sheet1", false);
+            }
+
+            public void CreateNewDocument()
+            {
+                Sheets.Clear();
+                nodeCount = 1;
+                firstSelectedNode = null;
+                copiedNodeData = null;
+                copiedNodePasteCount = 1;
+                CurrentMode = EditorMode.Process;
+
+                AddSheet("Sheet1", false);
+                ClearUndoRedoHistory();
+                MarkClean();
+
+                OnPropertyChanged(nameof(Nodes));
+                OnPropertyChanged(nameof(Connections));
+                OnPropertyChanged(nameof(BranchPoints));
+                OnPropertyChanged(nameof(CanDeleteSheet));
+                OnPropertyChanged(nameof(CurrentMode));
             }
 
             public void SaveUndoState()
@@ -499,7 +533,10 @@ namespace DfdToolWpf
             public void DeleteSelected()
             {
                 if (SelectedSheet == null) return;
-                if (!Nodes.Any(n => n.IsSelected) && !Connections.Any(c => c.IsSelected)) return;
+                if (!Nodes.Any(n => n.IsSelected) &&
+                    !Connections.Any(c => c.IsSelected) &&
+                    !BranchPoints.Any(b => b.IsSelected) &&
+                    !Connections.Any(c => c.Waypoints.Any(w => w.IsSelected))) return;
                 SaveUndoState();
     
                 var selectedNode = Nodes.FirstOrDefault(n => n.IsSelected);
@@ -515,13 +552,35 @@ namespace DfdToolWpf
                 {
                     Connections.Remove(selectedConnection);
                 }
+
+                var selectedBranchPoint = BranchPoints.FirstOrDefault(b => b.IsSelected);
+                if (selectedBranchPoint != null)
+                {
+                    var branchConnections = Connections.Where(c => c.SourceBranchPoint == selectedBranchPoint).ToList();
+                    foreach (var conn in branchConnections) Connections.Remove(conn);
+                    BranchPoints.Remove(selectedBranchPoint);
+                }
+
+                foreach (var conn in Connections.ToList())
+                {
+                    var selectedWaypoints = conn.Waypoints.Where(w => w.IsSelected).ToList();
+                    foreach (var waypoint in selectedWaypoints)
+                    {
+                        conn.Waypoints.Remove(waypoint);
+                    }
+                }
             }
     
             public void ResetSelection() 
             { 
                 if (SelectedSheet == null) return;
                 foreach (var n in Nodes) n.IsSelected = false;
-                foreach (var c in Connections) c.IsSelected = false;
+                foreach (var c in Connections)
+                {
+                    c.IsSelected = false;
+                    foreach (var w in c.Waypoints) w.IsSelected = false;
+                }
+                foreach (var b in BranchPoints) b.IsSelected = false;
                 firstSelectedNode = null; 
             }
     
@@ -529,10 +588,11 @@ namespace DfdToolWpf
             public void ClearAll() 
             { 
                 if (SelectedSheet == null) return;
-                if (!Nodes.Any() && !Connections.Any()) return;
+                if (!Nodes.Any() && !Connections.Any() && !BranchPoints.Any()) return;
                 SaveUndoState();
                 Nodes.Clear(); 
-                Connections.Clear(); 
+                Connections.Clear();
+                BranchPoints.Clear(); 
                 nodeCount = 1; 
                 ResetSelection(); 
             }
@@ -569,7 +629,18 @@ namespace DfdToolWpf
                 
                 foreach (var c in sheet.Connections) 
                 {
-                    var cData = new ConnectionData { SourceId = c.Source.Id, TargetId = c.Target.Id, Text = c.Text, IsDashed = c.IsDashed, DashStyle = c.DashStyle };
+                    var cData = new ConnectionData
+                    {
+                        Id = c.Id,
+                        SourceId = c.SourceBranchPoint == null ? c.Source.Id : Guid.Empty,
+                        FromBranchPointId = c.SourceBranchPoint?.Id ?? Guid.Empty,
+                        TargetId = c.Target.Id,
+                        Text = c.Text,
+                        IsTextVisible = c.IsTextVisible,
+                        StrokeColor = c.StrokeColor,
+                        IsDashed = c.IsDashed,
+                        DashStyle = c.DashStyle
+                    };
                     
                     foreach (var wp in c.Waypoints) 
                     {
@@ -577,6 +648,19 @@ namespace DfdToolWpf
                     }
                     
                     sheetData.Connections.Add(cData);
+                }
+
+                foreach (var branchPoint in sheet.BranchPoints)
+                {
+                    sheetData.BranchPoints.Add(new BranchPointData
+                    {
+                        Id = branchPoint.Id,
+                        ParentConnectionId = branchPoint.ParentConnection?.Id ?? Guid.Empty,
+                        X = branchPoint.X,
+                        Y = branchPoint.Y,
+                        SegmentIndex = branchPoint.SegmentIndex,
+                        SegmentT = branchPoint.SegmentT
+                    });
                 }
     
                 return sheetData;
@@ -602,7 +686,7 @@ namespace DfdToolWpf
                     foreach (var sheetData in data.Sheets)
                     {
                         var sheet = new DiagramSheetViewModel(string.IsNullOrWhiteSpace(sheetData.Name) ? GetNextSheetName() : sheetData.Name);
-                        LoadSheetData(sheet, sheetData.Nodes, sheetData.Connections);
+                        LoadSheetData(sheet, sheetData.Nodes, sheetData.Connections, sheetData.BranchPoints);
                         Sheets.Add(sheet);
                     }
     
@@ -614,7 +698,7 @@ namespace DfdToolWpf
                 {
                     // 旧JSON互換：Sheets がない場合は、従来の Nodes / Connections を Sheet1 として読み込む。
                     var sheet = new DiagramSheetViewModel("Sheet1");
-                    LoadSheetData(sheet, data.Nodes, data.Connections);
+                    LoadSheetData(sheet, data.Nodes, data.Connections, null);
                     Sheets.Add(sheet);
                     SelectedSheet = sheet;
                 }
@@ -649,7 +733,7 @@ namespace DfdToolWpf
                     {
                         string importedName = string.IsNullOrWhiteSpace(sheetData.Name) ? fileBaseName : $"{fileBaseName} - {sheetData.Name}";
                         var sheet = new DiagramSheetViewModel(GetUniqueSheetName(importedName));
-                        LoadSheetData(sheet, sheetData.Nodes, sheetData.Connections);
+                        LoadSheetData(sheet, sheetData.Nodes, sheetData.Connections, sheetData.BranchPoints);
                         Sheets.Add(sheet);
                         importedSheets.Add(sheet);
                     }
@@ -658,7 +742,7 @@ namespace DfdToolWpf
                 {
                     // 旧JSONを1枚のシートとして取り込む。
                     var sheet = new DiagramSheetViewModel(GetUniqueSheetName(fileBaseName));
-                    LoadSheetData(sheet, data.Nodes, data.Connections);
+                    LoadSheetData(sheet, data.Nodes, data.Connections, null);
                     Sheets.Add(sheet);
                     importedSheets.Add(sheet);
                 }
@@ -672,7 +756,7 @@ namespace DfdToolWpf
                 return importedSheets.Count;
             }
     
-            private void LoadSheetData(DiagramSheetViewModel sheet, List<NodeData> nodeDataList, List<ConnectionData> connectionDataList)
+            private void LoadSheetData(DiagramSheetViewModel sheet, List<NodeData> nodeDataList, List<ConnectionData> connectionDataList, List<BranchPointData> branchPointDataList = null)
             {
                 var dict = new Dictionary<Guid, NodeViewModel>();
                 
@@ -703,32 +787,145 @@ namespace DfdToolWpf
                     nodeCount++;
                 }
                 
+                var connectionDict = new Dictionary<Guid, ConnectionViewModel>();
+
+                var pendingBranchConnections = new List<ConnectionData>();
+
                 foreach (var c in connectionDataList ?? new List<ConnectionData>()) 
                 {
+                    if (c.FromBranchPointId != Guid.Empty)
+                    {
+                        pendingBranchConnections.Add(c);
+                        continue;
+                    }
+
                     if (dict.TryGetValue(c.SourceId, out var src) && dict.TryGetValue(c.TargetId, out var tgt)) 
                     {
-                        var conn = new ConnectionViewModel(src, tgt) { Text = c.Text ?? "データフロー", DashStyle = c.DashStyle ?? (c.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid) };
-                        
-                        if (c.WaypointNodes != null && c.WaypointNodes.Any())
-                        {
-                            foreach (var wp in c.WaypointNodes) 
-                            {
-                                conn.Waypoints.Add(new WaypointViewModel { X = wp.X, Y = wp.Y, IsJump = wp.IsJump });
-                            }
-                        }
-                        else if (c.Waypoints != null)
-                        {
-                            foreach (var pt in c.Waypoints) 
-                            {
-                                conn.Waypoints.Add(new WaypointViewModel { X = pt.X, Y = pt.Y, IsJump = false });
-                            }
-                        }
-                        
+                        var conn = CreateConnectionFromData(c, src, tgt);
                         sheet.Connections.Add(conn);
+                        connectionDict[conn.Id] = conn;
+                    }
+                }
+
+                var branchPointDict = new Dictionary<Guid, BranchPointViewModel>();
+
+                foreach (var branchPointData in branchPointDataList ?? new List<BranchPointData>())
+                {
+                    connectionDict.TryGetValue(branchPointData.ParentConnectionId, out var parentConnection);
+
+                    var branchPoint = new BranchPointViewModel
+                    {
+                        Id = branchPointData.Id == Guid.Empty ? Guid.NewGuid() : branchPointData.Id,
+                        ParentConnection = parentConnection,
+                        X = branchPointData.X,
+                        Y = branchPointData.Y
+                    };
+
+                    if (parentConnection != null)
+                    {
+                        if (branchPointData.SegmentIndex.HasValue && branchPointData.SegmentT.HasValue)
+                        {
+                            branchPoint.SegmentIndex = branchPointData.SegmentIndex.Value;
+                            branchPoint.SegmentT = branchPointData.SegmentT.Value;
+                            branchPoint.SyncToParentConnection();
+                        }
+                        else
+                        {
+                            // 旧保存データは X/Y しか持っていないため、現在の親線へ投影して相対位置を復元する。
+                            branchPoint.ApplyProjection(parentConnection.GetNearestProjectionOnPolyline(new Point(branchPoint.X, branchPoint.Y)));
+                        }
+                    }
+
+                    sheet.BranchPoints.Add(branchPoint);
+                    branchPointDict[branchPoint.Id] = branchPoint;
+                }
+
+                foreach (var c in pendingBranchConnections)
+                {
+                    if (branchPointDict.TryGetValue(c.FromBranchPointId, out var branchPoint) &&
+                        dict.TryGetValue(c.TargetId, out var tgt))
+                    {
+                        var conn = CreateConnectionFromData(c, branchPoint, tgt);
+                        sheet.Connections.Add(conn);
+                        connectionDict[conn.Id] = conn;
                     }
                 }
             }
     
+            private ConnectionViewModel CreateConnectionFromData(ConnectionData data, NodeViewModel source, NodeViewModel target)
+            {
+                var conn = new ConnectionViewModel(source, target)
+                {
+                    Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
+                    Text = data.Text ?? "データフロー",
+                    IsTextVisible = data.IsTextVisible ?? true,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
+                    DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
+                };
+
+                LoadWaypoints(conn, data);
+                return conn;
+            }
+
+            private ConnectionViewModel CreateConnectionFromData(ConnectionData data, BranchPointViewModel sourceBranchPoint, NodeViewModel target)
+            {
+                var conn = new ConnectionViewModel(sourceBranchPoint, target)
+                {
+                    Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
+                    Text = data.Text ?? "データフロー",
+                    IsTextVisible = data.IsTextVisible ?? true,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
+                    DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
+                };
+
+                LoadWaypoints(conn, data);
+                return conn;
+            }
+
+            private void LoadWaypoints(ConnectionViewModel conn, ConnectionData data)
+            {
+                if (data.WaypointNodes != null && data.WaypointNodes.Any())
+                {
+                    foreach (var wp in data.WaypointNodes)
+                    {
+                        conn.Waypoints.Add(new WaypointViewModel { X = wp.X, Y = wp.Y, IsJump = wp.IsJump });
+                    }
+                }
+                else if (data.Waypoints != null)
+                {
+                    foreach (var pt in data.Waypoints)
+                    {
+                        conn.Waypoints.Add(new WaypointViewModel { X = pt.X, Y = pt.Y, IsJump = false });
+                    }
+                }
+            }
+
+            public void CreateBranchConnection(ConnectionViewModel parentConnection, Point branchPointPosition, NodeViewModel targetNode)
+            {
+                if (SelectedSheet == null || parentConnection == null || targetNode == null) return;
+                if (CurrentMode != EditorMode.Arrow || targetNode.Type == EditorMode.CategoryFrame) return;
+
+                SaveUndoState();
+
+                ResetSelection();
+
+                PolylineProjection projection = parentConnection.GetNearestProjectionOnPolyline(branchPointPosition);
+
+                var branchPoint = new BranchPointViewModel
+                {
+                    ParentConnection = parentConnection
+                };
+                branchPoint.ApplyProjection(projection);
+
+                BranchPoints.Add(branchPoint);
+
+                var branchConnection = new ConnectionViewModel(branchPoint, targetNode);
+                Connections.Add(branchConnection);
+
+                branchConnection.IsSelected = true;
+                firstSelectedNode = null;
+            }
+
             public void HandleNodeClick(NodeViewModel clickedNode)
             {
                 if (CurrentMode != EditorMode.Arrow || clickedNode.Type == EditorMode.CategoryFrame) return;

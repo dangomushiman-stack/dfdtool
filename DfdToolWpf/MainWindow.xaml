@@ -5,6 +5,8 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F7F7F7">
             <MenuItem Header="ファイル">
+                <MenuItem Header="📄 新規作成" Click="BtnNew_Click" InputGestureText="Ctrl+N" />
+                <Separator />
                 <MenuItem Header="💾 上書き保存" Click="BtnOverwriteSave_Click" InputGestureText="Ctrl+S" />
                 <MenuItem Header="💾 名前を付けて保存" Click="BtnSave_Click" InputGestureText="Ctrl+Shift+S" />
                 <MenuItem Header="📂 読込" Click="BtnLoad_Click" />
@@ -19,6 +21,11 @@
                 <Separator />
                 <MenuItem Header="🖼️ 画像を貼り付け" Click="MenuItem_PasteImage_Click" InputGestureText="Ctrl+V" />
                 <MenuItem Header="🖼️ 画像ファイルを挿入" Click="MenuItem_InsertImageFile_Click" />
+            </MenuItem>
+            <MenuItem Header="表示">
+                <MenuItem Header="グリッド表示"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsGridVisible, Mode=TwoWay}" />
             </MenuItem>
         </Menu>
 
@@ -139,6 +146,16 @@
                 </Canvas.RenderTransform>
 
                 <Rectangle Canvas.Left="-50000" Canvas.Top="-50000" Width="100000" Height="100000" Panel.ZIndex="-100">
+                    <Rectangle.Style>
+                        <Style TargetType="Rectangle">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGridVisible}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Rectangle.Style>
                     <Rectangle.Fill>
                         <DrawingBrush TileMode="Tile" Viewport="0,0,20,20" ViewportUnits="Absolute">
                             <DrawingBrush.Drawing>
@@ -175,16 +192,31 @@
                                 <Path Data="{Binding LineGeometry}" StrokeThickness="3" Cursor="Hand" MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown" MouseRightButtonDown="ConnectionPath_MouseRightButtonDown" Panel.ZIndex="0">
                                     <Path.ContextMenu>
                                         <ContextMenu>
+                                            <MenuItem Header="文字列表示"
+                                                      IsCheckable="True"
+                                                      IsChecked="{Binding IsTextVisible, Mode=OneWay}"
+                                                      Click="MenuItem_ConnectionToggleTextVisibility_Click"/>
+                                            <Separator/>
                                             <MenuItem Header="矢印を実線にする" Click="MenuItem_ConnectionSolid_Click"/>
                                             <Separator/>
                                             <MenuItem Header="破線：粗い" Click="MenuItem_ConnectionCoarseDash_Click"/>
                                             <MenuItem Header="破線：標準" Click="MenuItem_ConnectionNormalDash_Click"/>
                                             <MenuItem Header="破線：細かい" Click="MenuItem_ConnectionFineDash_Click"/>
+                                            <Separator/>
+                                            <MenuItem Header="色">
+                                                <MenuItem Header="黒" Tag="Black" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="青" Tag="#4A90E2" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="灰" Tag="Gray" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="赤" Tag="#D9534F" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="緑" Tag="#5CB85C" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
+                                            </MenuItem>
                                         </ContextMenu>
                                     </Path.ContextMenu>
                                     <Path.Style>
                                         <Style TargetType="Path">
-                                            <Setter Property="Stroke" Value="Black" />
+                                            <Setter Property="Stroke" Value="{Binding StrokeColor}" />
                                             <Setter Property="StrokeDashArray" Value="{x:Null}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsDashCoarse}" Value="True">
@@ -197,7 +229,7 @@
                                                     <Setter Property="StrokeDashArray" Value="2 2" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                    <Setter Property="Stroke" Value="Orange" />
+                                                    <Setter Property="StrokeThickness" Value="5" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -207,11 +239,10 @@
                                 <Polygon Points="{Binding ArrowPoints}" Panel.ZIndex="1">
                                     <Polygon.Style>
                                         <Style TargetType="Polygon">
-                                            <Setter Property="Fill" Value="Black" />
+                                            <Setter Property="Fill" Value="{Binding StrokeColor}" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                    <Setter Property="Fill" Value="Orange" />
-                                                </DataTrigger>
+                                                <!-- 選択中も Fill は StrokeColor のままにする。
+                                                     線の色変更が選択ハイライトで隠れないよう、選択表示は線側の太さで表す。 -->
                                             </Style.Triggers>
                                         </Style>
                                     </Polygon.Style>
@@ -247,6 +278,10 @@
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter Property="Fill" Value="DodgerBlue"/>
                                                             </Trigger>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Fill" Value="#4A90E2" />
+                                                                <Setter Property="Stroke" Value="Orange" />
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsJump}" Value="True">
                                                                 <Setter Property="Fill" Value="Gold" />
                                                                 <Setter Property="Stroke" Value="DarkOrange" />
@@ -266,7 +301,45 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 
-                                <Grid Canvas.Left="{Binding MidX}" Canvas.Top="{Binding MidY}" Background="White" MinWidth="60" MinHeight="20" Cursor="Hand" MouseLeftButtonDown="ConnectionLabel_PreviewMouseLeftButtonDown" Panel.ZIndex="5">
+                                <Grid Canvas.Left="{Binding MidX}" Canvas.Top="{Binding MidY}" Background="White" MinWidth="60" MinHeight="20" Cursor="Hand" MouseLeftButtonDown="ConnectionLabel_PreviewMouseLeftButtonDown" MouseRightButtonDown="ConnectionLabel_MouseRightButtonDown" Panel.ZIndex="5">
+
+                                    <Grid.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="文字列表示"
+                                                      IsCheckable="True"
+                                                      IsChecked="{Binding IsTextVisible, Mode=OneWay}"
+                                                      Click="MenuItem_ConnectionToggleTextVisibility_Click"/>
+                                            <Separator/>
+                                            <MenuItem Header="矢印を実線にする" Click="MenuItem_ConnectionSolid_Click"/>
+                                            <Separator/>
+                                            <MenuItem Header="破線：粗い" Click="MenuItem_ConnectionCoarseDash_Click"/>
+                                            <MenuItem Header="破線：標準" Click="MenuItem_ConnectionNormalDash_Click"/>
+                                            <MenuItem Header="破線：細かい" Click="MenuItem_ConnectionFineDash_Click"/>
+                                            <Separator/>
+                                            <MenuItem Header="色">
+                                                <MenuItem Header="黒" Tag="Black" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="青" Tag="#4A90E2" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="灰" Tag="Gray" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="赤" Tag="#D9534F" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="緑" Tag="#5CB85C" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
+                                                <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTextVisible}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
                                     <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -293,6 +366,70 @@
                                     </TextBox>
                                 </Grid>
                             </Canvas>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 分岐点レイヤー。第3段階では Thumb 化してドラッグ移動できるようにする。 -->
+                <ItemsControl ItemsSource="{Binding BranchPoints}" Panel.ZIndex="20">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Thumb Width="14"
+                                   Height="14"
+                                   Cursor="SizeAll"
+                                   ToolTip="分岐点：ドラッグで移動"
+                                   DragStarted="BranchPoint_DragStarted"
+                                   DragDelta="BranchPoint_DragDelta">
+                                <Thumb.Style>
+                                    <Style TargetType="Thumb">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <!-- 親接続線が選択されているとき、または分岐点自体が範囲選択されているときだけ表示する -->
+                                            <DataTrigger Binding="{Binding ParentConnection.IsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Thumb.Style>
+                                <Thumb.RenderTransform>
+                                    <TranslateTransform X="-7" Y="-7" />
+                                </Thumb.RenderTransform>
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Grid Background="Transparent">
+                                            <Ellipse Fill="White" StrokeThickness="2">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Stroke" Value="#4A90E2" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Stroke" Value="Orange" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <Ellipse Width="4"
+                                                     Height="4"
+                                                     Fill="#4A90E2"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

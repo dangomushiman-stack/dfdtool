@@ -72,9 +72,27 @@ namespace DfdToolWpf
                 Point pos = e.GetPosition(MainCanvas);
                 double rawX = pos.X - clickPosition.X; 
                 double rawY = pos.Y - clickPosition.Y;
-                
-                wp.X = Snap(rawX);
-                wp.Y = Snap(rawY);
+
+                if (waypointDragStartPositions != null &&
+                    wp.IsSelected &&
+                    waypointDragStartPositions.Count > 1)
+                {
+                    waypointDragAccumulatedX = rawX - waypointDragStartPositions[wp].X;
+                    waypointDragAccumulatedY = rawY - waypointDragStartPositions[wp].Y;
+
+                    foreach (var item in waypointDragStartPositions)
+                    {
+                        item.Key.X = Snap(item.Value.X + waypointDragAccumulatedX);
+                        item.Key.Y = Snap(item.Value.Y + waypointDragAccumulatedY);
+                    }
+                }
+                else
+                {
+                    wp.X = Snap(rawX);
+                    wp.Y = Snap(rawY);
+                }
+
+                ViewModel.MarkDirty();
             }
         }
 
@@ -91,7 +109,8 @@ namespace DfdToolWpf
         { 
             isDragging = false; 
             selectedElement?.ReleaseMouseCapture(); 
-            selectedElement = null; 
+            selectedElement = null;
+            waypointDragStartPositions = null; 
         }
     }
 }

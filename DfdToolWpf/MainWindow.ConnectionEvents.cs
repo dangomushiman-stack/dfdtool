@@ -18,11 +18,20 @@ namespace DfdToolWpf
     {
         private void SetSelectedConnectionDashStyle(object sender, ConnectionDashStyle dashStyle)
         {
-            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is FrameworkElement element && element.DataContext is ConnectionViewModel conn)
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
             {
-                ViewModel.SaveUndoState();
-                conn.DashStyle = dashStyle;
+                return;
             }
+
+            if (conn.DashStyle == dashStyle)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+            conn.DashStyle = dashStyle;
+            ViewModel.MarkDirty();
         }
 
         private void MenuItem_ConnectionSolid_Click(object sender, RoutedEventArgs e)
@@ -40,9 +49,102 @@ namespace DfdToolWpf
             SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Normal);
         }
 
+        private ConnectionViewModel? GetConnectionFromMenuItem(object sender)
+        {
+            // 色メニューのような入れ子 MenuItem では、sender.Parent が直接 ContextMenu ではなく
+            // 親 MenuItem になる。そのため、論理ツリーを親方向へたどって ContextMenu を探す。
+            DependencyObject? current = sender as DependencyObject;
+
+            while (current != null)
+            {
+                if (current is FrameworkElement frameworkElement &&
+                    frameworkElement.DataContext is ConnectionViewModel dataContextConnection)
+                {
+                    return dataContextConnection;
+                }
+
+                if (current is ContextMenu contextMenu &&
+                    contextMenu.PlacementTarget is FrameworkElement placementTarget &&
+                    placementTarget.DataContext is ConnectionViewModel placementConnection)
+                {
+                    return placementConnection;
+                }
+
+                current = LogicalTreeHelper.GetParent(current);
+            }
+
+            // 念のためのフォールバック。右クリック時に対象線分を選択状態にしているため、
+            // ContextMenu から辿れない場合でも選択中の線分を対象にできる。
+            return ViewModel.Connections.FirstOrDefault(c => c.IsSelected);
+        }
+
         private void MenuItem_ConnectionFineDash_Click(object sender, RoutedEventArgs e)
         {
             SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Fine);
+        }
+
+        private void MenuItem_SetConnectionColor_Click(object sender, RoutedEventArgs e)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            if (sender is not MenuItem item || item.Tag is not string color || string.IsNullOrWhiteSpace(color))
+            {
+                return;
+            }
+
+            if (conn.StrokeColor == color)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+            conn.StrokeColor = color;
+            ViewModel.MarkDirty();
+        }
+
+        private void SetSelectedConnectionTextVisibility(object sender, bool isVisible)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            if (conn.IsTextVisible == isVisible)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+            conn.IsTextVisible = isVisible;
+            conn.IsEditing = false;
+            ViewModel.MarkDirty();
+        }
+
+
+        private void MenuItem_ConnectionToggleTextVisibility_Click(object sender, RoutedEventArgs e)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            SetSelectedConnectionTextVisibility(sender, !conn.IsTextVisible);
+        }
+
+        private void MenuItem_ConnectionShowText_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionTextVisibility(sender, true);
+        }
+
+        private void MenuItem_ConnectionHideText_Click(object sender, RoutedEventArgs e)
+        {
+            SetSelectedConnectionTextVisibility(sender, false);
         }
 
         private void ConnectionPath_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -52,9 +154,24 @@ namespace DfdToolWpf
                 ViewModel.ResetSelection();
                 conn.IsSelected = true;
 
+                Point p = e.GetPosition(MainCanvas);
+
+                if (ViewModel.CurrentMode == EditorMode.Arrow)
+                {
+                    // 矢印モードでは、既存矢印を「分岐元」として選択する。
+                    // 次に図形をクリックすると、この位置に分岐点を作り、分岐点→図形の矢印を追加する。
+                    pendingBranchParentConnection = conn;
+                    // 分岐点は親線上に置く。クリック位置が線幅の範囲内で多少ずれていても、
+                    // 親接続線の折れ線上で最も近い点へ補正してから保持する。
+                    pendingBranchPointPosition = conn.GetNearestPointOnPolyline(p);
+                    e.Handled = true;
+                    return;
+                }
+
+                pendingBranchParentConnection = null;
+
                 if (e.ClickCount == 2)
                 {
-                    Point p = e.GetPosition(MainCanvas);
                     InsertWaypoint(conn, p, false);
                 }
                 e.Handled = true;
@@ -80,7 +197,7 @@ namespace DfdToolWpf
             double minDistance = double.MaxValue;
             
             var linePts = new System.Collections.Generic.List<Point>();
-            linePts.Add(new Point(conn.Source.CenterX, conn.Source.CenterY));
+            linePts.Add(conn.GetStartReferencePoint());
             foreach (var w in conn.Waypoints) linePts.Add(new Point(w.X + 5, w.Y + 5));
             linePts.Add(new Point(conn.Target.CenterX, conn.Target.CenterY));
 
@@ -132,6 +249,28 @@ namespace DfdToolWpf
                 }
                 
                 ViewModel.SaveUndoState();
+
+                bool preserveWaypointSelection = wp.IsSelected && GetSelectedMovableItemCount() > 1;
+                var ownerConnection = FindConnectionForWaypoint(wp);
+
+                if (!preserveWaypointSelection)
+                {
+                    ViewModel.ResetSelection();
+                    wp.IsSelected = true;
+                }
+
+                // 折り曲げ点を動かすときは、所属する接続線も選択状態にしておく。
+                // これにより折り曲げ点レイヤーが表示され続け、関係も分かりやすい。
+                if (ownerConnection != null)
+                {
+                    ownerConnection.IsSelected = true;
+                }
+
+                waypointDragStartPositions = GetSelectedWaypoints()
+                    .ToDictionary(w => w, w => new Point(w.X, w.Y));
+                waypointDragAccumulatedX = 0;
+                waypointDragAccumulatedY = 0;
+
                 isDragging = true; 
                 selectedElement = el; 
                 clickPosition = e.GetPosition(el); 
@@ -150,6 +289,95 @@ namespace DfdToolWpf
             }
         }
 
+
+        private void BranchPoint_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            if (sender is Thumb thumb && thumb.DataContext is BranchPointViewModel branchPoint)
+            {
+                ViewModel.SaveUndoState();
+
+                bool preserveBranchPointSelection = branchPoint.IsSelected &&
+                    (ViewModel.BranchPoints?.Count(p => p.IsSelected) ?? 0) > 1;
+
+                if (!preserveBranchPointSelection)
+                {
+                    ViewModel.ResetSelection();
+                    branchPoint.IsSelected = true;
+                }
+
+                // 分岐点を動かすときは、親接続線も選択状態にしておく。
+                // 分岐点自体は IsSelected で表示されるが、親線も選択表示されると関係が分かりやすい。
+                if (branchPoint.ParentConnection != null)
+                {
+                    branchPoint.ParentConnection.IsSelected = true;
+                }
+
+                branchPointDragStartPositions = ViewModel.BranchPoints?
+                    .Where(p => p.IsSelected)
+                    .ToDictionary(p => p, p => new Point(p.X, p.Y));
+                branchPointDragAccumulatedX = 0;
+                branchPointDragAccumulatedY = 0;
+
+                branchPointRawX = branchPoint.X;
+                branchPointRawY = branchPoint.Y;
+                e.Handled = true;
+            }
+        }
+
+        private void BranchPoint_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            if (sender is Thumb thumb && thumb.DataContext is BranchPointViewModel branchPoint)
+            {
+                if (branchPointDragStartPositions != null &&
+                    branchPoint.IsSelected &&
+                    branchPointDragStartPositions.Count > 1)
+                {
+                    branchPointDragAccumulatedX += e.HorizontalChange;
+                    branchPointDragAccumulatedY += e.VerticalChange;
+
+                    foreach (var item in branchPointDragStartPositions)
+                    {
+                        MoveBranchPointToProposedPoint(
+                            item.Key,
+                            new Point(item.Value.X + branchPointDragAccumulatedX, item.Value.Y + branchPointDragAccumulatedY));
+                    }
+
+                    ViewModel.MarkDirty();
+                    e.Handled = true;
+                    return;
+                }
+
+                branchPointRawX += e.HorizontalChange;
+                branchPointRawY += e.VerticalChange;
+
+                MoveBranchPointToProposedPoint(branchPoint, new Point(branchPointRawX, branchPointRawY));
+
+                ViewModel.MarkDirty();
+                e.Handled = true;
+            }
+        }
+
+        private void MoveBranchPointToProposedPoint(BranchPointViewModel branchPoint, Point proposed)
+        {
+            if (branchPoint.ParentConnection != null)
+            {
+                // 分岐点は親接続線上に吸着させる。
+                // グリッドスナップよりも「親線上に存在する」ことを優先するため、
+                // ここでは Snap せず、折れ線上の最近傍点へ補正する。
+                PolylineProjection projection = branchPoint.ParentConnection.GetNearestProjectionOnPolyline(proposed);
+                branchPoint.ApplyProjection(projection);
+            }
+            else
+            {
+                branchPoint.X = Snap(proposed.X);
+                branchPoint.Y = Snap(proposed.Y);
+            }
+
+            // 分岐点を始点に持つ接続線は BranchPointViewModel の PropertyChanged で追従する。
+            // 親接続線側も選択ラベル等を最新化できるよう更新しておく。
+            branchPoint.ParentConnection?.UpdateGeometry();
+        }
+
         private void ConnectionLabel_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2 && ((Grid)sender).DataContext is ConnectionViewModel conn) 
@@ -157,6 +385,19 @@ namespace DfdToolWpf
                 ViewModel.SaveUndoState();
                 conn.IsEditing = true; 
                 e.Handled = true; 
+            }
+        }
+
+        private void ConnectionLabel_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Grid grid && grid.DataContext is ConnectionViewModel conn)
+            {
+                ViewModel.ResetSelection();
+                conn.IsSelected = true;
+
+                // 線分上の文字列を右クリックした場合も、対応する線分を右クリックしたのと同じ扱いにする。
+                // ContextMenu は Grid.ContextMenu 側に同じ内容を持たせているので、メニュー操作も線分と同じ処理に流れる。
+                e.Handled = false;
             }
         }
     }

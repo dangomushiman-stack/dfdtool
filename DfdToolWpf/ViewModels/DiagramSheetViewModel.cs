@@ -51,6 +51,7 @@ namespace DfdToolWpf
     
             public ObservableCollection<NodeViewModel> Nodes { get; } = new ObservableCollection<NodeViewModel>();
             public ObservableCollection<ConnectionViewModel> Connections { get; } = new ObservableCollection<ConnectionViewModel>();
+            public ObservableCollection<BranchPointViewModel> BranchPoints { get; } = new ObservableCollection<BranchPointViewModel>();
     
             public DiagramSheetViewModel(string name)
             {

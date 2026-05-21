@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -98,6 +98,8 @@ namespace DfdToolWpf
         private void CompleteRangeSelection(Point endPoint)
         {
             var selectedNodes = _rangeSelectionController.Complete(endPoint, ViewModel.Nodes);
+            var selectedBranchPoints = _rangeSelectionController.CompleteBranchPoints(endPoint, ViewModel.BranchPoints);
+            var selectedWaypoints = _rangeSelectionController.CompleteWaypoints(endPoint, ViewModel.Connections);
 
             RangeSelectionRectangle.Visibility = Visibility.Collapsed;
             MainCanvas.ReleaseMouseCapture();
@@ -106,6 +108,25 @@ namespace DfdToolWpf
             foreach (var node in selectedNodes)
             {
                 node.IsSelected = true;
+            }
+
+            foreach (var branchPoint in selectedBranchPoints)
+            {
+                branchPoint.IsSelected = true;
+                if (branchPoint.ParentConnection != null)
+                {
+                    branchPoint.ParentConnection.IsSelected = true;
+                }
+            }
+
+            foreach (var waypoint in selectedWaypoints)
+            {
+                waypoint.IsSelected = true;
+                var ownerConnection = FindConnectionForWaypoint(waypoint);
+                if (ownerConnection != null)
+                {
+                    ownerConnection.IsSelected = true;
+                }
             }
         }
 
