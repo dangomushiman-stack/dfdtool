@@ -1,10 +1,12 @@
-﻿<Window x:Class="DfdToolWpf.MainWindow"
+<Window x:Class="DfdToolWpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MVVM版 DFDエディタ" Height="600" Width="1100" KeyDown="Window_KeyDown" UseLayoutRounding="True">
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F7F7F7">
             <MenuItem Header="ファイル">
+                <MenuItem Header="📄 新規作成" Click="BtnNew_Click" InputGestureText="Ctrl+N" />
+                <Separator />
                 <MenuItem Header="💾 上書き保存" Click="BtnOverwriteSave_Click" InputGestureText="Ctrl+S" />
                 <MenuItem Header="💾 名前を付けて保存" Click="BtnSave_Click" InputGestureText="Ctrl+Shift+S" />
                 <MenuItem Header="📂 読込" Click="BtnLoad_Click" />
@@ -175,6 +177,11 @@
                                 <Path Data="{Binding LineGeometry}" StrokeThickness="3" Cursor="Hand" MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown" MouseRightButtonDown="ConnectionPath_MouseRightButtonDown" Panel.ZIndex="0">
                                     <Path.ContextMenu>
                                         <ContextMenu>
+                                            <MenuItem Header="文字列表示"
+                                                      IsCheckable="True"
+                                                      IsChecked="{Binding IsTextVisible, Mode=OneWay}"
+                                                      Click="MenuItem_ConnectionToggleTextVisibility_Click"/>
+                                            <Separator/>
                                             <MenuItem Header="矢印を実線にする" Click="MenuItem_ConnectionSolid_Click"/>
                                             <Separator/>
                                             <MenuItem Header="破線：粗い" Click="MenuItem_ConnectionCoarseDash_Click"/>
@@ -247,6 +254,10 @@
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter Property="Fill" Value="DodgerBlue"/>
                                                             </Trigger>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Fill" Value="#4A90E2" />
+                                                                <Setter Property="Stroke" Value="Orange" />
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsJump}" Value="True">
                                                                 <Setter Property="Fill" Value="Gold" />
                                                                 <Setter Property="Stroke" Value="DarkOrange" />
@@ -267,6 +278,19 @@
                                 </ItemsControl>
                                 
                                 <Grid Canvas.Left="{Binding MidX}" Canvas.Top="{Binding MidY}" Background="White" MinWidth="60" MinHeight="20" Cursor="Hand" MouseLeftButtonDown="ConnectionLabel_PreviewMouseLeftButtonDown" Panel.ZIndex="5">
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTextVisible}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
                                     <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -293,6 +317,70 @@
                                     </TextBox>
                                 </Grid>
                             </Canvas>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 分岐点レイヤー。第3段階では Thumb 化してドラッグ移動できるようにする。 -->
+                <ItemsControl ItemsSource="{Binding BranchPoints}" Panel.ZIndex="20">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Thumb Width="14"
+                                   Height="14"
+                                   Cursor="SizeAll"
+                                   ToolTip="分岐点：ドラッグで移動"
+                                   DragStarted="BranchPoint_DragStarted"
+                                   DragDelta="BranchPoint_DragDelta">
+                                <Thumb.Style>
+                                    <Style TargetType="Thumb">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <!-- 親接続線が選択されているとき、または分岐点自体が範囲選択されているときだけ表示する -->
+                                            <DataTrigger Binding="{Binding ParentConnection.IsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Thumb.Style>
+                                <Thumb.RenderTransform>
+                                    <TranslateTransform X="-7" Y="-7" />
+                                </Thumb.RenderTransform>
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Grid Background="Transparent">
+                                            <Ellipse Fill="White" StrokeThickness="2">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Stroke" Value="#4A90E2" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Stroke" Value="Orange" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <Ellipse Width="4"
+                                                     Height="4"
+                                                     Fill="#4A90E2"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

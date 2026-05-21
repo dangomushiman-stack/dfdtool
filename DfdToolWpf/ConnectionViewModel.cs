@@ -6,9 +6,20 @@ using System.Windows.Media;
 
 namespace DfdToolWpf
 {
+    public class PolylineProjection
+    {
+        public Point Point { get; set; }
+        public int SegmentIndex { get; set; }
+        public double SegmentT { get; set; }
+        public double DistanceSquared { get; set; }
+    }
+
     public class ConnectionViewModel : ViewModelBase
     {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public event EventHandler? GeometryUpdated;
         public NodeViewModel Source { get; }
+        public BranchPointViewModel? SourceBranchPoint { get; }
         public NodeViewModel Target { get; }
         public ObservableCollection<WaypointViewModel> Waypoints { get; } = new ObservableCollection<WaypointViewModel>();
 
@@ -24,6 +35,18 @@ namespace DfdToolWpf
 
         private string _text = "データフロー";
         public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
+
+        private bool _isTextVisible = true;
+        public bool IsTextVisible
+        {
+            get => _isTextVisible;
+            set
+            {
+                if (_isTextVisible == value) return;
+                _isTextVisible = value;
+                OnPropertyChanged();
+            }
+        }
 
         private bool _isEditing;
         public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
@@ -62,13 +85,38 @@ namespace DfdToolWpf
         {
             Source = source;
             Target = target;
+            AttachSourceNodeEvents(source);
+            AttachCommonEvents();
+            UpdateGeometry();
+        }
 
-            Source.PropertyChanged += (s, e) =>
+        public ConnectionViewModel(BranchPointViewModel sourceBranchPoint, NodeViewModel target)
+        {
+            Source = null!;
+            SourceBranchPoint = sourceBranchPoint;
+            Target = target;
+
+            sourceBranchPoint.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(BranchPointViewModel.X) || e.PropertyName == nameof(BranchPointViewModel.Y))
+                    UpdateGeometry();
+            };
+
+            AttachCommonEvents();
+            UpdateGeometry();
+        }
+
+        private void AttachSourceNodeEvents(NodeViewModel source)
+        {
+            source.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == "CenterX" || e.PropertyName == "CenterY" || e.PropertyName == "Width" || e.PropertyName == "Height")
                     UpdateGeometry();
             };
+        }
 
+        private void AttachCommonEvents()
+        {
             Target.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == "CenterX" || e.PropertyName == "CenterY" || e.PropertyName == "Width" || e.PropertyName == "Height")
@@ -84,8 +132,6 @@ namespace DfdToolWpf
                 }
                 UpdateGeometry();
             };
-
-            UpdateGeometry();
         }
 
         public void UpdateGeometry()
@@ -96,7 +142,7 @@ namespace DfdToolWpf
                 ? new Point(Waypoints[0].X + 5, Waypoints[0].Y + 5)
                 : new Point(Target.CenterX, Target.CenterY);
 
-            Point startPt = GetEdgePoint(Source, nextPt);
+            Point startPt = GetStartPoint(nextPt);
             pts.Add(startPt);
 
             foreach (var wp in Waypoints)
@@ -171,6 +217,185 @@ namespace DfdToolWpf
             Point mid = GetPolylineMidPoint(pts);
             MidX = mid.X - 30;
             MidY = mid.Y - 10;
+
+            GeometryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+
+        public Point GetStartReferencePoint()
+        {
+            if (SourceBranchPoint != null)
+            {
+                return new Point(SourceBranchPoint.X, SourceBranchPoint.Y);
+            }
+
+            return new Point(Source.CenterX, Source.CenterY);
+        }
+
+        /// <summary>
+        /// 現在描画される接続線の折れ線点列を返す。
+        /// 始点・中継点・終点をキャンバス座標で返すため、
+        /// 分岐点を親線上へ吸着させる処理などで利用できる。
+        /// </summary>
+        public IReadOnlyList<Point> GetPolylinePoints()
+        {
+            var pts = new List<Point>();
+
+            Point nextPt = Waypoints.Count > 0
+                ? new Point(Waypoints[0].X + 5, Waypoints[0].Y + 5)
+                : new Point(Target.CenterX, Target.CenterY);
+
+            Point startPt = GetStartPoint(nextPt);
+            pts.Add(startPt);
+
+            foreach (var wp in Waypoints)
+            {
+                pts.Add(new Point(wp.X + 5, wp.Y + 5));
+            }
+
+            Point lastPt = pts[pts.Count - 1];
+            Point endPt = GetEdgePoint(Target, lastPt);
+            pts.Add(endPt);
+
+            return pts;
+        }
+
+        /// <summary>
+        /// 指定されたキャンバス座標に最も近い、接続線上の点を返す。
+        /// 中継点を含む折れ線の全セグメントを対象にする。
+        /// </summary>
+        public Point GetNearestPointOnPolyline(Point point)
+        {
+            return GetNearestProjectionOnPolyline(point).Point;
+        }
+
+        /// <summary>
+        /// 指定されたキャンバス座標に最も近い、接続線上の点・線分番号・線分内割合を返す。
+        /// 分岐点はこの SegmentIndex / SegmentT を保持することで、親線の移動に追従できる。
+        /// </summary>
+        public PolylineProjection GetNearestProjectionOnPolyline(Point point)
+        {
+            var points = GetPolylinePoints();
+            if (points.Count == 0)
+            {
+                return new PolylineProjection
+                {
+                    Point = point,
+                    SegmentIndex = 0,
+                    SegmentT = 0.0,
+                    DistanceSquared = 0.0
+                };
+            }
+
+            if (points.Count == 1)
+            {
+                return new PolylineProjection
+                {
+                    Point = points[0],
+                    SegmentIndex = 0,
+                    SegmentT = 0.0,
+                    DistanceSquared = GetDistanceSquared(point, points[0])
+                };
+            }
+
+            var best = new PolylineProjection
+            {
+                Point = points[0],
+                SegmentIndex = 0,
+                SegmentT = 0.0,
+                DistanceSquared = double.MaxValue
+            };
+
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                var projection = GetProjectionOnSegment(point, points[i], points[i + 1], i);
+
+                if (projection.DistanceSquared < best.DistanceSquared)
+                {
+                    best = projection;
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// SegmentIndex / SegmentT から、現在の接続線形状上の座標を再計算する。
+        /// </summary>
+        public Point GetPointAtSegmentPosition(int segmentIndex, double segmentT)
+        {
+            var points = GetPolylinePoints();
+            if (points.Count == 0)
+            {
+                return new Point();
+            }
+
+            if (points.Count == 1)
+            {
+                return points[0];
+            }
+
+            int clampedIndex = Math.Max(0, Math.Min(segmentIndex, points.Count - 2));
+            double t = Math.Max(0.0, Math.Min(1.0, segmentT));
+
+            Point start = points[clampedIndex];
+            Point end = points[clampedIndex + 1];
+
+            return new Point(
+                start.X + (end.X - start.X) * t,
+                start.Y + (end.Y - start.Y) * t);
+        }
+
+        private static PolylineProjection GetProjectionOnSegment(Point point, Point start, Point end, int segmentIndex)
+        {
+            double dx = end.X - start.X;
+            double dy = end.Y - start.Y;
+            double lengthSquared = dx * dx + dy * dy;
+
+            if (lengthSquared < 0.0001)
+            {
+                return new PolylineProjection
+                {
+                    Point = start,
+                    SegmentIndex = segmentIndex,
+                    SegmentT = 0.0,
+                    DistanceSquared = GetDistanceSquared(point, start)
+                };
+            }
+
+            double t = ((point.X - start.X) * dx + (point.Y - start.Y) * dy) / lengthSquared;
+            t = Math.Max(0.0, Math.Min(1.0, t));
+
+            Point projected = new Point(start.X + t * dx, start.Y + t * dy);
+
+            return new PolylineProjection
+            {
+                Point = projected,
+                SegmentIndex = segmentIndex,
+                SegmentT = t,
+                DistanceSquared = GetDistanceSquared(point, projected)
+            };
+        }
+
+        private static Point GetNearestPointOnSegment(Point point, Point start, Point end)
+        {
+            return GetProjectionOnSegment(point, start, end, 0).Point;
+        }
+
+        private static double GetDistanceSquared(Point a, Point b)
+        {
+            double dx = a.X - b.X;
+            double dy = a.Y - b.Y;
+            return dx * dx + dy * dy;
+        }
+
+        private Point GetStartPoint(Point towardPoint)
+        {
+            if (SourceBranchPoint != null)
+            {
+                return new Point(SourceBranchPoint.X, SourceBranchPoint.Y);
+            }
+
+            return GetEdgePoint(Source, towardPoint);
         }
 
         private double GetLastSegmentAngle(List<Point> points)

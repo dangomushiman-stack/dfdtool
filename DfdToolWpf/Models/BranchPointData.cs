@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace DfdToolWpf
 {
@@ -12,5 +12,9 @@ namespace DfdToolWpf
         public Guid ParentConnectionId { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
+
+        // 親接続線上の相対位置。旧保存ファイルには存在しないため nullable にしている。
+        public int? SegmentIndex { get; set; }
+        public double? SegmentT { get; set; }
     }
 }

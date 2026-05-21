@@ -112,7 +112,16 @@ namespace DfdToolWpf
 
                 if (ViewModel.CurrentMode == EditorMode.Arrow)
                 {
-                    ViewModel.HandleNodeClick(node);
+                    if (pendingBranchParentConnection != null)
+                    {
+                        ViewModel.CreateBranchConnection(pendingBranchParentConnection, pendingBranchPointPosition, node);
+                        pendingBranchParentConnection = null;
+                    }
+                    else
+                    {
+                        ViewModel.HandleNodeClick(node);
+                    }
+
                     e.Handled = true;
                     return;
                 }
@@ -128,7 +137,30 @@ namespace DfdToolWpf
 
         private bool ShouldPreserveMultiSelectionForDrag(NodeViewModel node)
         {
-            return node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1;
+            int selectedNodeCount = ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0;
+            int selectedBranchPointCount = ViewModel.BranchPoints?.Count(p => p.IsSelected) ?? 0;
+            int selectedWaypointCount = GetSelectedWaypoints().Count();
+            return node.IsSelected && selectedNodeCount + selectedBranchPointCount + selectedWaypointCount > 1;
+        }
+
+        private IEnumerable<WaypointViewModel> GetSelectedWaypoints()
+        {
+            return ViewModel.Connections
+                .SelectMany(c => c.Waypoints)
+                .Where(w => w.IsSelected);
+        }
+
+        private ConnectionViewModel? FindConnectionForWaypoint(WaypointViewModel waypoint)
+        {
+            return ViewModel.Connections.FirstOrDefault(c => c.Waypoints.Contains(waypoint));
+        }
+
+        private int GetSelectedMovableItemCount()
+        {
+            int selectedNodeCount = ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0;
+            int selectedBranchPointCount = ViewModel.BranchPoints?.Count(p => p.IsSelected) ?? 0;
+            int selectedWaypointCount = GetSelectedWaypoints().Count();
+            return selectedNodeCount + selectedBranchPointCount + selectedWaypointCount;
         }
 
         private bool IsFrameBodyCanvasClick(MouseButtonEventArgs e)
@@ -205,17 +237,31 @@ namespace DfdToolWpf
             {
                 ViewModel.SaveUndoState();
 
-                if (node.IsSelected && (ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0) > 1)
+                int selectedNodeCount = ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0;
+                int selectedBranchPointCount = ViewModel.BranchPoints?.Count(p => p.IsSelected) ?? 0;
+                int selectedWaypointCount = GetSelectedWaypoints().Count();
+
+                if (node.IsSelected && selectedNodeCount + selectedBranchPointCount + selectedWaypointCount > 1)
                 {
                     multiDragStartPositions = ViewModel.Nodes
                         .Where(n => n.IsSelected)
                         .ToDictionary(n => n, n => new Point(n.X, n.Y));
+
+                    branchPointDragStartPositions = ViewModel.BranchPoints?
+                        .Where(p => p.IsSelected)
+                        .ToDictionary(p => p, p => new Point(p.X, p.Y));
+
+                    waypointDragStartPositions = GetSelectedWaypoints()
+                        .ToDictionary(w => w, w => new Point(w.X, w.Y));
+
                     multiDragAccumulatedX = 0;
                     multiDragAccumulatedY = 0;
                     return;
                 }
 
                 multiDragStartPositions = null;
+                branchPointDragStartPositions = null;
+                waypointDragStartPositions = null;
                 dragRawX = node.X;
                 dragRawY = node.Y;
             }
@@ -227,7 +273,8 @@ namespace DfdToolWpf
         {
             if (ViewModel.CurrentMode != EditorMode.Arrow && ((Thumb)sender).DataContext is NodeViewModel node)
             {
-                if (multiDragStartPositions != null && node.IsSelected && multiDragStartPositions.Count > 1)
+                if (multiDragStartPositions != null && node.IsSelected &&
+                    (multiDragStartPositions.Count + (branchPointDragStartPositions?.Count ?? 0) + (waypointDragStartPositions?.Count ?? 0)) > 1)
                 {
                     multiDragAccumulatedX += e.HorizontalChange;
                     multiDragAccumulatedY += e.VerticalChange;
@@ -238,6 +285,26 @@ namespace DfdToolWpf
                         item.Key.Y = Snap(item.Value.Y + multiDragAccumulatedY);
                     }
 
+                    if (branchPointDragStartPositions != null)
+                    {
+                        foreach (var item in branchPointDragStartPositions)
+                        {
+                            MoveBranchPointToProposedPoint(
+                                item.Key,
+                                new Point(item.Value.X + multiDragAccumulatedX, item.Value.Y + multiDragAccumulatedY));
+                        }
+                    }
+
+                    if (waypointDragStartPositions != null)
+                    {
+                        foreach (var item in waypointDragStartPositions)
+                        {
+                            item.Key.X = Snap(item.Value.X + multiDragAccumulatedX);
+                            item.Key.Y = Snap(item.Value.Y + multiDragAccumulatedY);
+                        }
+                    }
+
+                    ViewModel.MarkDirty();
                     e.Handled = true;
                     return;
                 }

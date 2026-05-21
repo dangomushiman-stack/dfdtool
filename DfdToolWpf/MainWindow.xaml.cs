@@ -28,6 +28,9 @@ namespace DfdToolWpf
         private readonly UrlLinkService _urlLinkService = new();
         private readonly FrameHitTestResolver _frameHitTestResolver = new();
         private readonly RangeSelectionController _rangeSelectionController = new();
+
+        // Undo/Redo中は、シート選択変更イベントで表示位置をリセットしない。
+        private bool suppressViewportResetOnSheetSelection = false;
         
         // 操作用の状態変数
         private bool isDragging = false;
@@ -50,10 +53,28 @@ namespace DfdToolWpf
         private double tailRawX;
         private double tailRawY;
 
+        // 分岐点ドラッグ用：グリッドスナップONでも細かいDragDeltaを累積する
+        private double branchPointRawX;
+        private double branchPointRawY;
+
+        // 矢印モードで「既存矢印 → 図形」を選んで分岐線を作るための一時状態
+        private ConnectionViewModel? pendingBranchParentConnection;
+        private Point pendingBranchPointPosition;
+
         // 複数選択ノードのグループドラッグ用
         private Dictionary<NodeViewModel, Point>? multiDragStartPositions;
         private double multiDragAccumulatedX;
         private double multiDragAccumulatedY;
+
+        // 範囲選択された分岐点のグループドラッグ用
+        private Dictionary<BranchPointViewModel, Point>? branchPointDragStartPositions;
+        private double branchPointDragAccumulatedX;
+        private double branchPointDragAccumulatedY;
+
+        // 範囲選択された線分の折り曲げ点（中継点）のグループドラッグ用
+        private Dictionary<WaypointViewModel, Point>? waypointDragStartPositions;
+        private double waypointDragAccumulatedX;
+        private double waypointDragAccumulatedY;
 
         public MainWindow()
         {
@@ -86,6 +107,7 @@ namespace DfdToolWpf
             if (sender is FrameworkElement btn && btn.Tag != null)
             {
                 ViewModel.CurrentMode = (EditorMode)Enum.Parse(typeof(EditorMode), btn.Tag.ToString());
+                pendingBranchParentConnection = null;
                 ViewModel.ResetSelection();
             }
         }
@@ -97,28 +119,78 @@ namespace DfdToolWpf
 
         private void BtnUndo_Click(object sender, RoutedEventArgs e)
         {
-            ViewModel.Undo();
+            RunHistoryOperationPreservingViewport(() => ViewModel.Undo());
         }
 
         private void BtnRedo_Click(object sender, RoutedEventArgs e)
         {
-            ViewModel.Redo();
+            RunHistoryOperationPreservingViewport(() => ViewModel.Redo());
+        }
+
+        private void RunHistoryOperationPreservingViewport(Func<bool> historyOperation)
+        {
+            double scaleX = MainScale.ScaleX;
+            double scaleY = MainScale.ScaleY;
+            double translateX = MainTranslate.X;
+            double translateY = MainTranslate.Y;
+
+            suppressViewportResetOnSheetSelection = true;
+            try
+            {
+                bool changed = historyOperation();
+                if (!changed)
+                {
+                    return;
+                }
+
+                RestoreViewport(scaleX, scaleY, translateX, translateY);
+
+                // Undo/Redo による SelectedSheet 復元や TabControl の再描画が後から走っても、
+                // 表示位置が中央・原点へ戻らないよう、レイアウト更新後にも再適用する。
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    RestoreViewport(scaleX, scaleY, translateX, translateY);
+                    MainCanvas.Focus();
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+            finally
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    suppressViewportResetOnSheetSelection = false;
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+        }
+
+        private void RestoreViewport(double scaleX, double scaleY, double translateX, double translateY)
+        {
+            MainScale.ScaleX = scaleX;
+            MainScale.ScaleY = scaleY;
+            MainTranslate.X = translateX;
+            MainTranslate.Y = translateY;
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (IsTextEditingNow()) return;
 
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.N)
+            {
+                BtnNew_Click(sender, e);
+                e.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z)
             {
-                ViewModel.Undo();
+                RunHistoryOperationPreservingViewport(() => ViewModel.Undo());
                 e.Handled = true;
                 return;
             }
 
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y)
             {
-                ViewModel.Redo();
+                RunHistoryOperationPreservingViewport(() => ViewModel.Redo());
                 e.Handled = true;
                 return;
             }

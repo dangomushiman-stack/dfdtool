@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -39,10 +39,15 @@ namespace DfdToolWpf
             if (e.Source == sender)
             {
                 ViewModel.ResetSelection();
-                MainScale.ScaleX = 1;
-                MainScale.ScaleY = 1;
-                MainTranslate.X = 0;
-                MainTranslate.Y = 0;
+
+                if (!suppressViewportResetOnSheetSelection)
+                {
+                    MainScale.ScaleX = 1;
+                    MainScale.ScaleY = 1;
+                    MainTranslate.X = 0;
+                    MainTranslate.Y = 0;
+                }
+
                 MainCanvas.Focus();
             }
         }

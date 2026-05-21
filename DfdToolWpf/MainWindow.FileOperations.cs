@@ -18,6 +18,22 @@ namespace DfdToolWpf
     {
         private string? currentFilePath;
 
+
+        private void BtnNew_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ConfirmSaveIfDirty()) return;
+
+            ViewModel.CreateNewDocument();
+            currentFilePath = null;
+
+            MainScale.ScaleX = 1;
+            MainScale.ScaleY = 1;
+            MainTranslate.X = 0;
+            MainTranslate.Y = 0;
+            MainCanvas.Focus();
+            UpdateWindowTitle();
+        }
+
         private void BtnOverwriteSave_Click(object sender, RoutedEventArgs e)
         {
             SaveCurrentDocument();

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -68,6 +68,67 @@ namespace DfdToolWpf.Services
                 if (selectionRect.IntersectsWith(nodeRect))
                 {
                     yield return node;
+                }
+            }
+        }
+
+        public IReadOnlyList<BranchPointViewModel> CompleteBranchPoints(Point endPoint, IEnumerable<BranchPointViewModel>? branchPoints)
+        {
+            var selectionRect = CreateNormalizedRect(_startPoint, endPoint);
+
+            if (IsTinySelection(selectionRect))
+            {
+                return Array.Empty<BranchPointViewModel>();
+            }
+
+            return GetBranchPointsInRange(selectionRect, branchPoints).ToList();
+        }
+
+        public IEnumerable<BranchPointViewModel> GetBranchPointsInRange(Rect selectionRect, IEnumerable<BranchPointViewModel>? branchPoints)
+        {
+            if (branchPoints == null)
+            {
+                yield break;
+            }
+
+            foreach (var branchPoint in branchPoints)
+            {
+                if (selectionRect.Contains(new Point(branchPoint.X, branchPoint.Y)))
+                {
+                    yield return branchPoint;
+                }
+            }
+        }
+
+
+        public IReadOnlyList<WaypointViewModel> CompleteWaypoints(Point endPoint, IEnumerable<ConnectionViewModel>? connections)
+        {
+            var selectionRect = CreateNormalizedRect(_startPoint, endPoint);
+
+            if (IsTinySelection(selectionRect))
+            {
+                return Array.Empty<WaypointViewModel>();
+            }
+
+            return GetWaypointsInRange(selectionRect, connections).ToList();
+        }
+
+        public IEnumerable<WaypointViewModel> GetWaypointsInRange(Rect selectionRect, IEnumerable<ConnectionViewModel>? connections)
+        {
+            if (connections == null)
+            {
+                yield break;
+            }
+
+            foreach (var connection in connections)
+            {
+                foreach (var waypoint in connection.Waypoints)
+                {
+                    // Waypoint の X/Y は表示用 Ellipse の左上。中心点で範囲判定する。
+                    if (selectionRect.Contains(new Point(waypoint.X + 5.0, waypoint.Y + 5.0)))
+                    {
+                        yield return waypoint;
+                    }
                 }
             }
         }
