@@ -433,6 +433,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                
 
                 <ItemsControl ItemsSource="{Binding Nodes}" Panel.ZIndex="0">
                     <ItemsControl.ItemsPanel>

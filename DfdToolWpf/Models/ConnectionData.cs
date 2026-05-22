@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -15,6 +15,7 @@ namespace DfdToolWpf
             public Guid SourceId { get; set; }
             public Guid FromBranchPointId { get; set; }
             public Guid TargetId { get; set; }
+            public Guid ToBranchPointId { get; set; }
             public string Text { get; set; }
             public bool? IsTextVisible { get; set; }
             public string StrokeColor { get; set; } = "Black";

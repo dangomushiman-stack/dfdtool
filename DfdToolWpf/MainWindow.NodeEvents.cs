@@ -163,6 +163,15 @@ namespace DfdToolWpf
             return selectedNodeCount + selectedBranchPointCount + selectedWaypointCount;
         }
 
+        private int GetTotalSelectedItemCount()
+        {
+            int selectedNodeCount = ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0;
+            int selectedConnectionCount = ViewModel.Connections?.Count(c => c.IsSelected) ?? 0;
+            int selectedBranchPointCount = ViewModel.BranchPoints?.Count(p => p.IsSelected) ?? 0;
+            int selectedWaypointCount = GetSelectedWaypoints().Count();
+            return selectedNodeCount + selectedConnectionCount + selectedBranchPointCount + selectedWaypointCount;
+        }
+
         private bool IsFrameBodyCanvasClick(MouseButtonEventArgs e)
         {
             // 矢印モードでは、接続枠を接続対象としてクリックしたいのでキャンバス扱いにしない。
@@ -361,10 +370,18 @@ namespace DfdToolWpf
                     ? _frameHitTestResolver.ResolveFrameForRightClick(ViewModel.Nodes, canvasPoint) ?? node
                     : node;
 
-                SelectOnlyNode(targetNode);
+                // 複数選択済みの図形を右クリックした場合は、右クリックだけで選択を1つに絞らない。
+                // ここで SelectOnlyNode() してしまうと、その後に「編集 > 削除」や Delete キーを押したとき、
+                // 範囲選択していた要素のうち右クリックした1つだけが削除される。
+                if (!(targetNode.IsSelected && GetTotalSelectedItemCount() > 1))
+                {
+                    SelectOnlyNode(targetNode);
+                }
 
                 if (grid.ContextMenu != null)
                 {
+                    // メニュー操作そのものは右クリックした図形を対象にしたいので、
+                    // 複数選択を維持する場合でも ContextMenu の DataContext は targetNode にする。
                     grid.ContextMenu.DataContext = targetNode;
                 }
             }
@@ -575,14 +592,8 @@ namespace DfdToolWpf
 
         private NodeViewModel? GetNodeFromContextMenuItem(MenuItem item)
         {
-            // 右クリック時に NodeGrid_ContextMenuOpening で選択したノードを最優先する。
-            // 枠が重なっていて PlacementTarget が外側枠になっていても、メニュー操作対象を揃えるため。
-            var selectedNode = ViewModel.Nodes?.FirstOrDefault(n => n.IsSelected);
-            if (selectedNode != null)
-            {
-                return selectedNode;
-            }
-
+            // 複数選択中でも、右クリックメニューの各操作は「右クリックした図形」を対象にする。
+            // そのため、選択中ノードの FirstOrDefault() より ContextMenu.DataContext を優先する。
             DependencyObject? current = item;
             while (current != null)
             {
@@ -602,7 +613,8 @@ namespace DfdToolWpf
                 current = LogicalTreeHelper.GetParent(current) ?? TryGetVisualParent(current);
             }
 
-            return null;
+            // フォールバック。通常は上の ContextMenu.DataContext で取れる。
+            return ViewModel.Nodes?.FirstOrDefault(n => n.IsSelected);
         }
 
         private DependencyObject? TryGetVisualParent(DependencyObject current)

@@ -533,42 +533,106 @@ namespace DfdToolWpf
             public void DeleteSelected()
             {
                 if (SelectedSheet == null) return;
-                if (!Nodes.Any(n => n.IsSelected) &&
-                    !Connections.Any(c => c.IsSelected) &&
-                    !BranchPoints.Any(b => b.IsSelected) &&
-                    !Connections.Any(c => c.Waypoints.Any(w => w.IsSelected))) return;
+
+                var selectedNodes = Nodes.Where(n => n.IsSelected).ToList();
+                var selectedConnections = Connections.Where(c => c.IsSelected).ToList();
+                var selectedBranchPoints = BranchPoints.Where(b => b.IsSelected).ToList();
+                var selectedWaypoints = Connections
+                    .SelectMany(c => c.Waypoints.Select(w => new { Connection = c, Waypoint = w }))
+                    .Where(x => x.Waypoint.IsSelected)
+                    .ToList();
+
+                if (!selectedNodes.Any() &&
+                    !selectedConnections.Any() &&
+                    !selectedBranchPoints.Any() &&
+                    !selectedWaypoints.Any()) return;
+
                 SaveUndoState();
-    
-                var selectedNode = Nodes.FirstOrDefault(n => n.IsSelected);
-                if (selectedNode != null)
-                {
-                    var relatedConnections = Connections.Where(c => c.Source == selectedNode || c.Target == selectedNode).ToList();
-                    foreach (var conn in relatedConnections) Connections.Remove(conn);
-                    Nodes.Remove(selectedNode);
-                }
-    
-                var selectedConnection = Connections.FirstOrDefault(c => c.IsSelected);
-                if (selectedConnection != null)
-                {
-                    Connections.Remove(selectedConnection);
-                }
 
-                var selectedBranchPoint = BranchPoints.FirstOrDefault(b => b.IsSelected);
-                if (selectedBranchPoint != null)
+                // 選択ノードにつながっている接続線も削除対象にする。
+                foreach (var node in selectedNodes)
                 {
-                    var branchConnections = Connections.Where(c => c.SourceBranchPoint == selectedBranchPoint).ToList();
-                    foreach (var conn in branchConnections) Connections.Remove(conn);
-                    BranchPoints.Remove(selectedBranchPoint);
-                }
-
-                foreach (var conn in Connections.ToList())
-                {
-                    var selectedWaypoints = conn.Waypoints.Where(w => w.IsSelected).ToList();
-                    foreach (var waypoint in selectedWaypoints)
+                    foreach (var conn in Connections.Where(c => c.Source == node || c.Target == node).ToList())
                     {
-                        conn.Waypoints.Remove(waypoint);
+                        if (!selectedConnections.Contains(conn))
+                        {
+                            selectedConnections.Add(conn);
+                        }
                     }
                 }
+
+                // 削除対象の接続線を親に持つ分岐点も削除対象にする。
+                foreach (var conn in selectedConnections.ToList())
+                {
+                    foreach (var branchPoint in BranchPoints.Where(b => b.ParentConnection == conn).ToList())
+                    {
+                        if (!selectedBranchPoints.Contains(branchPoint))
+                        {
+                            selectedBranchPoints.Add(branchPoint);
+                        }
+                    }
+                }
+
+                // 削除対象の分岐点につながっている接続線も削除対象にする。
+                // 分岐点からさらに別の分岐点へつながっている可能性があるため、固定点に達するまで繰り返す。
+                bool changed;
+                do
+                {
+                    changed = false;
+
+                    foreach (var branchPoint in selectedBranchPoints.ToList())
+                    {
+                        foreach (var conn in Connections
+                            .Where(c => c.SourceBranchPoint == branchPoint || c.TargetBranchPoint == branchPoint)
+                            .ToList())
+                        {
+                            if (!selectedConnections.Contains(conn))
+                            {
+                                selectedConnections.Add(conn);
+                                changed = true;
+                            }
+                        }
+                    }
+
+                    foreach (var conn in selectedConnections.ToList())
+                    {
+                        foreach (var branchPoint in BranchPoints.Where(b => b.ParentConnection == conn).ToList())
+                        {
+                            if (!selectedBranchPoints.Contains(branchPoint))
+                            {
+                                selectedBranchPoints.Add(branchPoint);
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+                while (changed);
+
+                // 接続線そのものを削除する場合は、中継点の個別削除は不要。
+                foreach (var item in selectedWaypoints)
+                {
+                    if (!selectedConnections.Contains(item.Connection))
+                    {
+                        item.Connection.Waypoints.Remove(item.Waypoint);
+                    }
+                }
+
+                foreach (var conn in selectedConnections.ToList())
+                {
+                    Connections.Remove(conn);
+                }
+
+                foreach (var branchPoint in selectedBranchPoints.ToList())
+                {
+                    BranchPoints.Remove(branchPoint);
+                }
+
+                foreach (var node in selectedNodes.ToList())
+                {
+                    Nodes.Remove(node);
+                }
+
+                ResetSelection();
             }
     
             public void ResetSelection() 
@@ -632,9 +696,10 @@ namespace DfdToolWpf
                     var cData = new ConnectionData
                     {
                         Id = c.Id,
-                        SourceId = c.SourceBranchPoint == null ? c.Source.Id : Guid.Empty,
+                        SourceId = c.SourceBranchPoint == null ? (c.Source?.Id ?? Guid.Empty) : Guid.Empty,
                         FromBranchPointId = c.SourceBranchPoint?.Id ?? Guid.Empty,
-                        TargetId = c.Target.Id,
+                        TargetId = c.Target?.Id ?? Guid.Empty,
+                        ToBranchPointId = c.TargetBranchPoint?.Id ?? Guid.Empty,
                         Text = c.Text,
                         IsTextVisible = c.IsTextVisible,
                         StrokeColor = c.StrokeColor,
@@ -793,7 +858,7 @@ namespace DfdToolWpf
 
                 foreach (var c in connectionDataList ?? new List<ConnectionData>()) 
                 {
-                    if (c.FromBranchPointId != Guid.Empty)
+                    if (c.FromBranchPointId != Guid.Empty || c.ToBranchPointId != Guid.Empty)
                     {
                         pendingBranchConnections.Add(c);
                         continue;
@@ -842,10 +907,32 @@ namespace DfdToolWpf
 
                 foreach (var c in pendingBranchConnections)
                 {
-                    if (branchPointDict.TryGetValue(c.FromBranchPointId, out var branchPoint) &&
-                        dict.TryGetValue(c.TargetId, out var tgt))
+                    bool hasSourceBranch = c.FromBranchPointId != Guid.Empty;
+                    bool hasTargetBranch = c.ToBranchPointId != Guid.Empty;
+
+                    ConnectionViewModel? conn = null;
+
+                    if (hasSourceBranch && !hasTargetBranch &&
+                        branchPointDict.TryGetValue(c.FromBranchPointId, out var sourceBranchPoint) &&
+                        dict.TryGetValue(c.TargetId, out var targetNode))
                     {
-                        var conn = CreateConnectionFromData(c, branchPoint, tgt);
+                        conn = CreateConnectionFromData(c, sourceBranchPoint, targetNode);
+                    }
+                    else if (!hasSourceBranch && hasTargetBranch &&
+                             dict.TryGetValue(c.SourceId, out var sourceNode) &&
+                             branchPointDict.TryGetValue(c.ToBranchPointId, out var targetBranchPoint))
+                    {
+                        conn = CreateConnectionFromData(c, sourceNode, targetBranchPoint);
+                    }
+                    else if (hasSourceBranch && hasTargetBranch &&
+                             branchPointDict.TryGetValue(c.FromBranchPointId, out var sourceBranchPoint2) &&
+                             branchPointDict.TryGetValue(c.ToBranchPointId, out var targetBranchPoint2))
+                    {
+                        conn = CreateConnectionFromData(c, sourceBranchPoint2, targetBranchPoint2);
+                    }
+
+                    if (conn != null)
+                    {
                         sheet.Connections.Add(conn);
                         connectionDict[conn.Id] = conn;
                     }
@@ -882,6 +969,36 @@ namespace DfdToolWpf
                 return conn;
             }
 
+            private ConnectionViewModel CreateConnectionFromData(ConnectionData data, NodeViewModel source, BranchPointViewModel targetBranchPoint)
+            {
+                var conn = new ConnectionViewModel(source, targetBranchPoint)
+                {
+                    Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
+                    Text = data.Text ?? "データフロー",
+                    IsTextVisible = data.IsTextVisible ?? true,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
+                    DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
+                };
+
+                LoadWaypoints(conn, data);
+                return conn;
+            }
+
+            private ConnectionViewModel CreateConnectionFromData(ConnectionData data, BranchPointViewModel sourceBranchPoint, BranchPointViewModel targetBranchPoint)
+            {
+                var conn = new ConnectionViewModel(sourceBranchPoint, targetBranchPoint)
+                {
+                    Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
+                    Text = data.Text ?? "データフロー",
+                    IsTextVisible = data.IsTextVisible ?? true,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
+                    DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
+                };
+
+                LoadWaypoints(conn, data);
+                return conn;
+            }
+
             private void LoadWaypoints(ConnectionViewModel conn, ConnectionData data)
             {
                 if (data.WaypointNodes != null && data.WaypointNodes.Any())
@@ -898,6 +1015,37 @@ namespace DfdToolWpf
                         conn.Waypoints.Add(new WaypointViewModel { X = pt.X, Y = pt.Y, IsJump = false });
                     }
                 }
+            }
+
+            public bool HasPendingArrowSource => firstSelectedNode != null;
+
+            public bool CreateConnectionFromPendingNodeToBranch(ConnectionViewModel parentConnection, Point branchPointPosition)
+            {
+                if (SelectedSheet == null || parentConnection == null || firstSelectedNode == null) return false;
+                if (CurrentMode != EditorMode.Arrow || firstSelectedNode.Type == EditorMode.CategoryFrame) return false;
+
+                var sourceNode = firstSelectedNode;
+
+                SaveUndoState();
+
+                ResetSelection();
+
+                PolylineProjection projection = parentConnection.GetNearestProjectionOnPolyline(branchPointPosition);
+
+                var branchPoint = new BranchPointViewModel
+                {
+                    ParentConnection = parentConnection
+                };
+                branchPoint.ApplyProjection(projection);
+
+                BranchPoints.Add(branchPoint);
+
+                var branchConnection = new ConnectionViewModel(sourceNode, branchPoint);
+                Connections.Add(branchConnection);
+
+                branchConnection.IsSelected = true;
+                firstSelectedNode = null;
+                return true;
             }
 
             public void CreateBranchConnection(ConnectionViewModel parentConnection, Point branchPointPosition, NodeViewModel targetNode)

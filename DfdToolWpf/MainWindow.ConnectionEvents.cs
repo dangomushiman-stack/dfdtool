@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -151,23 +151,17 @@ namespace DfdToolWpf
         {
             if (sender is System.Windows.Shapes.Path path && path.DataContext is ConnectionViewModel conn)
             {
-                ViewModel.ResetSelection();
-                conn.IsSelected = true;
-
                 Point p = e.GetPosition(MainCanvas);
 
                 if (ViewModel.CurrentMode == EditorMode.Arrow)
                 {
-                    // 矢印モードでは、既存矢印を「分岐元」として選択する。
-                    // 次に図形をクリックすると、この位置に分岐点を作り、分岐点→図形の矢印を追加する。
-                    pendingBranchParentConnection = conn;
-                    // 分岐点は親線上に置く。クリック位置が線幅の範囲内で多少ずれていても、
-                    // 親接続線の折れ線上で最も近い点へ補正してから保持する。
-                    pendingBranchPointPosition = conn.GetNearestPointOnPolyline(p);
+                    HandleConnectionClickInArrowMode(conn, p);
                     e.Handled = true;
                     return;
                 }
 
+                ViewModel.ResetSelection();
+                conn.IsSelected = true;
                 pendingBranchParentConnection = null;
 
                 if (e.ClickCount == 2)
@@ -178,12 +172,41 @@ namespace DfdToolWpf
             }
         }
 
+        private void HandleConnectionClickInArrowMode(ConnectionViewModel conn, Point canvasPoint)
+        {
+            // 注意: ここで先に ResetSelection() してはいけない。
+            // 図形→矢印の分岐作成では、図形クリック時に保持した firstSelectedNode を
+            // ViewModel.HasPendingArrowSource / CreateConnectionFromPendingNodeToBranch が使う。
+            // ResetSelection() は firstSelectedNode もクリアするため、分岐作成前に呼ぶと
+            // 「図形から矢印へ」が成立しなくなる。
+            if (ViewModel.HasPendingArrowSource)
+            {
+                ViewModel.CreateConnectionFromPendingNodeToBranch(conn, canvasPoint);
+                pendingBranchParentConnection = null;
+                return;
+            }
+
+            // 図形を先に選んでいない場合は、既存矢印を「分岐元」として選択する。
+            // 次に図形をクリックすると、この位置に分岐点を作り、分岐点→図形の矢印を追加する。
+            ViewModel.ResetSelection();
+            conn.IsSelected = true;
+            pendingBranchParentConnection = conn;
+            // 分岐点は親線上に置く。クリック位置が線幅の範囲内で多少ずれていても、
+            // 親接続線の折れ線上で最も近い点へ補正してから保持する。
+            pendingBranchPointPosition = conn.GetNearestPointOnPolyline(canvasPoint);
+        }
+
         private void ConnectionPath_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is System.Windows.Shapes.Path path && path.DataContext is ConnectionViewModel conn)
             {
-                ViewModel.ResetSelection();
-                conn.IsSelected = true;
+                // 複数選択済みの線分を右クリックした場合は、右クリックだけで選択を1つに絞らない。
+                // 範囲選択後に右クリックしてから削除しても、複数選択を維持できるようにする。
+                if (!(conn.IsSelected && GetTotalSelectedItemCount() > 1))
+                {
+                    ViewModel.ResetSelection();
+                    conn.IsSelected = true;
+                }
 
                 // 右クリックでは接続線を選択し、ContextMenu で線種を変更できるようにする。
                 // 以前の「右クリックでジャンプ中継点追加」は、メニュー操作と競合するためここでは行わない。
@@ -199,7 +222,7 @@ namespace DfdToolWpf
             var linePts = new System.Collections.Generic.List<Point>();
             linePts.Add(conn.GetStartReferencePoint());
             foreach (var w in conn.Waypoints) linePts.Add(new Point(w.X + 5, w.Y + 5));
-            linePts.Add(new Point(conn.Target.CenterX, conn.Target.CenterY));
+            linePts.Add(conn.GetEndReferencePoint());
 
             for (int i = 0; i < linePts.Count - 1; i++)
             {
@@ -380,7 +403,21 @@ namespace DfdToolWpf
 
         private void ConnectionLabel_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2 && ((Grid)sender).DataContext is ConnectionViewModel conn) 
+            if (sender is not Grid grid || grid.DataContext is not ConnectionViewModel conn)
+            {
+                return;
+            }
+
+            // 線分上の文字列をクリックした場合も、対応する線分をクリックしたのと同じ扱いにする。
+            // 特に矢印モードでは、文字枠が線分クリックを奪うため、ここで分岐作成処理へ流す。
+            if (ViewModel.CurrentMode == EditorMode.Arrow)
+            {
+                HandleConnectionClickInArrowMode(conn, e.GetPosition(MainCanvas));
+                e.Handled = true;
+                return;
+            }
+
+            if (e.ClickCount == 2) 
             { 
                 ViewModel.SaveUndoState();
                 conn.IsEditing = true; 
@@ -392,10 +429,14 @@ namespace DfdToolWpf
         {
             if (sender is Grid grid && grid.DataContext is ConnectionViewModel conn)
             {
-                ViewModel.ResetSelection();
-                conn.IsSelected = true;
-
                 // 線分上の文字列を右クリックした場合も、対応する線分を右クリックしたのと同じ扱いにする。
+                // ただし複数選択済みの線分なら、右クリックだけで選択を1つに絞らない。
+                if (!(conn.IsSelected && GetTotalSelectedItemCount() > 1))
+                {
+                    ViewModel.ResetSelection();
+                    conn.IsSelected = true;
+                }
+
                 // ContextMenu は Grid.ContextMenu 側に同じ内容を持たせているので、メニュー操作も線分と同じ処理に流れる。
                 e.Handled = false;
             }

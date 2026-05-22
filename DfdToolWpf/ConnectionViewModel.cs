@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -18,9 +18,10 @@ namespace DfdToolWpf
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public event EventHandler? GeometryUpdated;
-        public NodeViewModel Source { get; }
+        public NodeViewModel? Source { get; }
         public BranchPointViewModel? SourceBranchPoint { get; }
-        public NodeViewModel Target { get; }
+        public NodeViewModel? Target { get; }
+        public BranchPointViewModel? TargetBranchPoint { get; }
         public ObservableCollection<WaypointViewModel> Waypoints { get; } = new ObservableCollection<WaypointViewModel>();
 
         private Geometry _lineGeometry;
@@ -105,16 +106,36 @@ namespace DfdToolWpf
 
         public ConnectionViewModel(BranchPointViewModel sourceBranchPoint, NodeViewModel target)
         {
-            Source = null!;
+            Source = null;
             SourceBranchPoint = sourceBranchPoint;
             Target = target;
 
-            sourceBranchPoint.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(BranchPointViewModel.X) || e.PropertyName == nameof(BranchPointViewModel.Y))
-                    UpdateGeometry();
-            };
+            AttachSourceBranchPointEvents(sourceBranchPoint);
+            AttachCommonEvents();
+            UpdateGeometry();
+        }
 
+        public ConnectionViewModel(NodeViewModel source, BranchPointViewModel targetBranchPoint)
+        {
+            Source = source;
+            Target = null;
+            TargetBranchPoint = targetBranchPoint;
+
+            AttachSourceNodeEvents(source);
+            AttachTargetBranchPointEvents(targetBranchPoint);
+            AttachCommonEvents();
+            UpdateGeometry();
+        }
+
+        public ConnectionViewModel(BranchPointViewModel sourceBranchPoint, BranchPointViewModel targetBranchPoint)
+        {
+            Source = null;
+            SourceBranchPoint = sourceBranchPoint;
+            Target = null;
+            TargetBranchPoint = targetBranchPoint;
+
+            AttachSourceBranchPointEvents(sourceBranchPoint);
+            AttachTargetBranchPointEvents(targetBranchPoint);
             AttachCommonEvents();
             UpdateGeometry();
         }
@@ -128,13 +149,34 @@ namespace DfdToolWpf
             };
         }
 
-        private void AttachCommonEvents()
+        private void AttachSourceBranchPointEvents(BranchPointViewModel sourceBranchPoint)
         {
-            Target.PropertyChanged += (s, e) =>
+            sourceBranchPoint.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == "CenterX" || e.PropertyName == "CenterY" || e.PropertyName == "Width" || e.PropertyName == "Height")
+                if (e.PropertyName == nameof(BranchPointViewModel.X) || e.PropertyName == nameof(BranchPointViewModel.Y))
                     UpdateGeometry();
             };
+        }
+
+        private void AttachTargetBranchPointEvents(BranchPointViewModel targetBranchPoint)
+        {
+            targetBranchPoint.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(BranchPointViewModel.X) || e.PropertyName == nameof(BranchPointViewModel.Y))
+                    UpdateGeometry();
+            };
+        }
+
+        private void AttachCommonEvents()
+        {
+            if (Target != null)
+            {
+                Target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == "CenterX" || e.PropertyName == "CenterY" || e.PropertyName == "Width" || e.PropertyName == "Height")
+                        UpdateGeometry();
+                };
+            }
 
             Waypoints.CollectionChanged += (s, e) =>
             {
@@ -153,7 +195,7 @@ namespace DfdToolWpf
 
             Point nextPt = Waypoints.Count > 0
                 ? new Point(Waypoints[0].X + 5, Waypoints[0].Y + 5)
-                : new Point(Target.CenterX, Target.CenterY);
+                : GetTargetReferencePoint();
 
             Point startPt = GetStartPoint(nextPt);
             pts.Add(startPt);
@@ -164,7 +206,7 @@ namespace DfdToolWpf
             }
 
             Point lastPt = pts[pts.Count - 1];
-            Point endPt = GetEdgePoint(Target, lastPt);
+            Point endPt = GetEndPoint(lastPt);
             pts.Add(endPt);
 
             double angle = GetLastSegmentAngle(pts);
@@ -241,7 +283,17 @@ namespace DfdToolWpf
                 return new Point(SourceBranchPoint.X, SourceBranchPoint.Y);
             }
 
-            return new Point(Source.CenterX, Source.CenterY);
+            return Source != null ? new Point(Source.CenterX, Source.CenterY) : new Point();
+        }
+
+        public Point GetEndReferencePoint()
+        {
+            if (TargetBranchPoint != null)
+            {
+                return new Point(TargetBranchPoint.X, TargetBranchPoint.Y);
+            }
+
+            return Target != null ? new Point(Target.CenterX, Target.CenterY) : new Point();
         }
 
         /// <summary>
@@ -255,7 +307,7 @@ namespace DfdToolWpf
 
             Point nextPt = Waypoints.Count > 0
                 ? new Point(Waypoints[0].X + 5, Waypoints[0].Y + 5)
-                : new Point(Target.CenterX, Target.CenterY);
+                : GetTargetReferencePoint();
 
             Point startPt = GetStartPoint(nextPt);
             pts.Add(startPt);
@@ -266,7 +318,7 @@ namespace DfdToolWpf
             }
 
             Point lastPt = pts[pts.Count - 1];
-            Point endPt = GetEdgePoint(Target, lastPt);
+            Point endPt = GetEndPoint(lastPt);
             pts.Add(endPt);
 
             return pts;
@@ -401,6 +453,21 @@ namespace DfdToolWpf
             return dx * dx + dy * dy;
         }
 
+        private Point GetTargetReferencePoint()
+        {
+            return GetEndReferencePoint();
+        }
+
+        private Point GetEndPoint(Point fromPoint)
+        {
+            if (TargetBranchPoint != null)
+            {
+                return new Point(TargetBranchPoint.X, TargetBranchPoint.Y);
+            }
+
+            return Target != null ? GetEdgePoint(Target, fromPoint) : fromPoint;
+        }
+
         private Point GetStartPoint(Point towardPoint)
         {
             if (SourceBranchPoint != null)
@@ -408,7 +475,7 @@ namespace DfdToolWpf
                 return new Point(SourceBranchPoint.X, SourceBranchPoint.Y);
             }
 
-            return GetEdgePoint(Source, towardPoint);
+            return Source != null ? GetEdgePoint(Source, towardPoint) : towardPoint;
         }
 
         private double GetLastSegmentAngle(List<Point> points)
