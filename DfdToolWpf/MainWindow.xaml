@@ -189,6 +189,41 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Canvas TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
+                                <Canvas.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="文字列表示"
+                                                  IsCheckable="True"
+                                                  IsChecked="{Binding IsTextVisible, Mode=OneWay}"
+                                                  Click="MenuItem_ConnectionToggleTextVisibility_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="矢印を実線にする" Click="MenuItem_ConnectionSolid_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="破線：粗い" Click="MenuItem_ConnectionCoarseDash_Click"/>
+                                        <MenuItem Header="破線：標準" Click="MenuItem_ConnectionNormalDash_Click"/>
+                                        <MenuItem Header="破線：細かい" Click="MenuItem_ConnectionFineDash_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="色">
+                                            <MenuItem Header="黒" Tag="Black" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="青" Tag="#4A90E2" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="灰" Tag="Gray" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="赤" Tag="#D9534F" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="緑" Tag="#5CB85C" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
+                                            <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Canvas.ContextMenu>
+
+                                <!-- 見た目は変えず、クリック検知だけを広げる透明なヒット領域 -->
+                                <Path Data="{Binding LineGeometry}"
+                                      Stroke="Transparent"
+                                      StrokeThickness="14"
+                                      Fill="{x:Null}"
+                                      Cursor="Hand"
+                                      MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown"
+                                      MouseRightButtonDown="ConnectionPath_MouseRightButtonDown"
+                                      Panel.ZIndex="-1" />
+
                                 <Path Data="{Binding LineGeometry}" StrokeThickness="3" Cursor="Hand" MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown" MouseRightButtonDown="ConnectionPath_MouseRightButtonDown" Panel.ZIndex="0">
                                     <Path.ContextMenu>
                                         <ContextMenu>
@@ -236,7 +271,13 @@
                                     </Path.Style>
                                 </Path>
                                 
-                                <Polygon Points="{Binding ArrowPoints}" Panel.ZIndex="1">
+                                <Polygon Points="{Binding ArrowPoints}"
+                                         Stroke="Transparent"
+                                         StrokeThickness="8"
+                                         Cursor="Hand"
+                                         MouseLeftButtonDown="ConnectionPath_MouseLeftButtonDown"
+                                         MouseRightButtonDown="ConnectionPath_MouseRightButtonDown"
+                                         Panel.ZIndex="1">
                                     <Polygon.Style>
                                         <Style TargetType="Polygon">
                                             <Setter Property="Fill" Value="{Binding StrokeColor}" />
@@ -433,7 +474,6 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                
 
                 <ItemsControl ItemsSource="{Binding Nodes}" Panel.ZIndex="0">
                     <ItemsControl.ItemsPanel>
