@@ -21,6 +21,7 @@ namespace DfdToolWpf
             private string _fileFormat = string.Empty;
             private string _linkUrl = string.Empty;
             private string _imageDataBase64 = string.Empty;
+            private NodeTextPlacement _textPlacement = NodeTextPlacement.Center;
             private ImageSource _imageSource;
             private string _strokeColor = "#4A90E2";
             private string _fillColor = "White";
@@ -59,6 +60,24 @@ namespace DfdToolWpf
             public double Width { get => _width; set { if (value > 0) _width = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterX)); RefreshTail(); } }
             public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
             public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
+            public NodeTextPlacement TextPlacement
+            {
+                get => _textPlacement;
+                set
+                {
+                    if (_textPlacement == value) return;
+                    _textPlacement = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(LabelHorizontalAlignment));
+                    OnPropertyChanged(nameof(LabelVerticalAlignment));
+                    OnPropertyChanged(nameof(LabelTextAlignment));
+                    OnPropertyChanged(nameof(EditHorizontalContentAlignment));
+                    OnPropertyChanged(nameof(EditVerticalContentAlignment));
+                    OnPropertyChanged(nameof(EditTextAlignment));
+                    OnPropertyChanged(nameof(IsTextPlacementCenter));
+                    OnPropertyChanged(nameof(IsTextPlacementTopLeft));
+                }
+            }
             public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
             public string LinkUrl { get => _linkUrl; set { _linkUrl = value ?? string.Empty; OnPropertyChanged(); } }
             public string ImageDataBase64
@@ -124,6 +143,15 @@ namespace DfdToolWpf
                     };
                 }
             }
+
+            public HorizontalAlignment LabelHorizontalAlignment => TextPlacement == NodeTextPlacement.TopLeft ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+            public VerticalAlignment LabelVerticalAlignment => TextPlacement == NodeTextPlacement.TopLeft ? VerticalAlignment.Top : VerticalAlignment.Center;
+            public TextAlignment LabelTextAlignment => TextPlacement == NodeTextPlacement.TopLeft ? TextAlignment.Left : TextAlignment.Center;
+            public HorizontalAlignment EditHorizontalContentAlignment => TextPlacement == NodeTextPlacement.TopLeft ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+            public VerticalAlignment EditVerticalContentAlignment => TextPlacement == NodeTextPlacement.TopLeft ? VerticalAlignment.Top : VerticalAlignment.Center;
+            public TextAlignment EditTextAlignment => TextPlacement == NodeTextPlacement.TopLeft ? TextAlignment.Left : TextAlignment.Center;
+            public bool IsTextPlacementCenter => TextPlacement == NodeTextPlacement.Center;
+            public bool IsTextPlacementTopLeft => TextPlacement == NodeTextPlacement.TopLeft;
 
             public Visibility StickySpeechBubbleVisibility => IsStickySpeechBubble ? Visibility.Visible : Visibility.Collapsed;
             public Visibility TailHandleVisibility => IsStickySpeechBubble && IsSelected ? Visibility.Visible : Visibility.Collapsed;

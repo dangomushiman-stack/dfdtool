@@ -18,6 +18,7 @@ namespace DfdToolWpf
             public double Width { get; set; }
             public double Height { get; set; }
             public string Text { get; set; }
+            public NodeTextPlacement TextPlacement { get; set; }
             public string FileFormat { get; set; }
             public string LinkUrl { get; set; }
             public bool IsFileFormatVisible { get; set; }

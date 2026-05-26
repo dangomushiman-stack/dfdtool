@@ -655,6 +655,33 @@ namespace DfdToolWpf
             }
         }
 
+
+        private void MenuItem_SetNodeTextPlacement_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Tag is string placementText)
+            {
+                var node = GetNodeFromContextMenuItem(item);
+                if (node == null)
+                {
+                    return;
+                }
+
+                if (!Enum.TryParse<NodeTextPlacement>(placementText, out var placement))
+                {
+                    return;
+                }
+
+                if (node.TextPlacement == placement)
+                {
+                    return;
+                }
+
+                ViewModel.SaveUndoState();
+                node.TextPlacement = placement;
+                ViewModel.MarkDirty();
+            }
+        }
+
         private void MenuItem_SearchSameSymbolText_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem item)

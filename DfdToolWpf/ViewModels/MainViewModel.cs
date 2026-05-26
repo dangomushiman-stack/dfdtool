@@ -386,6 +386,7 @@ namespace DfdToolWpf
                     Width = node.Width,
                     Height = node.Height,
                     Text = node.Text,
+                    TextPlacement = node.TextPlacement,
                     FileFormat = node.FileFormat,
                     LinkUrl = node.LinkUrl,
                     IsFileFormatVisible = node.IsFileFormatVisible,
@@ -409,6 +410,7 @@ namespace DfdToolWpf
                     Width = data.Width > 0 ? data.Width : 100,
                     Height = data.Height > 0 ? data.Height : 50,
                     Text = data.Text,
+                    TextPlacement = data.TextPlacement,
                     FileFormat = data.FileFormat ?? string.Empty,
                     LinkUrl = data.LinkUrl ?? string.Empty,
                     IsFileFormatVisible = data.IsFileFormatVisible,
@@ -688,7 +690,7 @@ namespace DfdToolWpf
                 
                 foreach (var n in sheet.Nodes) 
                 {
-                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
+                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, TextPlacement = n.TextPlacement, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
                 }
                 
                 foreach (var c in sheet.Connections) 
@@ -837,6 +839,7 @@ namespace DfdToolWpf
                         Width = n.Width > 0 ? n.Width : 100,
                         Height = n.Height > 0 ? n.Height : 50,
                         Text = n.Text,
+                        TextPlacement = n.TextPlacement,
                         FileFormat = n.FileFormat ?? string.Empty,
                         LinkUrl = n.LinkUrl ?? string.Empty,
                         IsFileFormatVisible = n.IsFileFormatVisible,

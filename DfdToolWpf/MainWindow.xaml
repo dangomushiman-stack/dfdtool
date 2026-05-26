@@ -564,6 +564,19 @@
                                                         <MenuItem Header="薄い紫" Tag="#EEE6FF" Click="MenuItem_SetNodeFillColor_Click"/>
                                                     </MenuItem>
                                                     <Separator/>
+                                                    <MenuItem Header="文字列位置">
+                                                        <MenuItem Header="中央"
+                                                                  Tag="Center"
+                                                                  IsCheckable="True"
+                                                                  IsChecked="{Binding IsTextPlacementCenter, Mode=OneWay}"
+                                                                  Click="MenuItem_SetNodeTextPlacement_Click"/>
+                                                        <MenuItem Header="左上"
+                                                                  Tag="TopLeft"
+                                                                  IsCheckable="True"
+                                                                  IsChecked="{Binding IsTextPlacementTopLeft, Mode=OneWay}"
+                                                                  Click="MenuItem_SetNodeTextPlacement_Click"/>
+                                                    </MenuItem>
+                                                    <Separator/>
                                                     <MenuItem Header="付箋に吹き出しを付ける" Click="MenuItem_MakeStickySpeechBubble_Click"/>
                                                     <MenuItem Header="通常の付箋に戻す" Click="MenuItem_MakeStickyNote_Click"/>
                                                     <Separator/>
@@ -633,7 +646,7 @@
                                             <Border x:Name="SelectionHighlight" BorderBrush="Orange" BorderThickness="3" Visibility="Collapsed" Margin="-3" CornerRadius="5"/>
                                             
                                             <Grid Margin="5">
-                                                <TextBlock Text="{Binding Text}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" x:Name="LabelText" TextWrapping="Wrap" TextAlignment="Center">
+                                                <TextBlock Text="{Binding Text}" HorizontalAlignment="{Binding LabelHorizontalAlignment}" VerticalAlignment="{Binding LabelVerticalAlignment}" FontWeight="Bold" x:Name="LabelText" TextWrapping="Wrap" TextAlignment="{Binding LabelTextAlignment}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Visibility" Value="Visible"/>
@@ -646,7 +659,7 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
                                                 
-                                                <TextBox x:Name="EditTextBox" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextAlignment="Center">
+                                                <TextBox x:Name="EditTextBox" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" PreviewKeyDown="TextBox_PreviewKeyDown" LostFocus="TextBox_LostFocus" IsVisibleChanged="TextBox_IsVisibleChanged" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="{Binding EditHorizontalContentAlignment}" VerticalContentAlignment="{Binding EditVerticalContentAlignment}" TextAlignment="{Binding EditTextAlignment}">
                                                     <TextBox.Style>
                                                         <Style TargetType="TextBox">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
