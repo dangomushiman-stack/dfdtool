@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -20,6 +20,10 @@ namespace DfdToolWpf
             public bool? IsTextVisible { get; set; }
             public bool? IsArrowVisible { get; set; }
             public string StrokeColor { get; set; } = "Black";
+            public bool? IsFromAnchorManual { get; set; }
+            public double? FromAnchorRatio { get; set; }
+            public bool? IsToAnchorManual { get; set; }
+            public double? ToAnchorRatio { get; set; }
             public bool IsDashed { get; set; }
             public ConnectionDashStyle? DashStyle { get; set; }
             

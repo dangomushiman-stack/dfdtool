@@ -134,7 +134,7 @@ namespace DfdToolWpf
         {
             ViewModel.ResetSelection();
             
-            if (ViewModel.CurrentMode != EditorMode.Arrow && ViewModel.CurrentMode != EditorMode.Select)
+            if (ViewModel.CurrentMode != EditorMode.Arrow && ViewModel.CurrentMode != EditorMode.Select && ViewModel.CurrentMode != EditorMode.AnchorEdit)
             {
                 if (ViewModel.CurrentMode == EditorMode.CategoryFrame || ViewModel.CurrentMode == EditorMode.ConnectableFrame) 
                 {

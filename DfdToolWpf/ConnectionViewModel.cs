@@ -34,6 +34,57 @@ namespace DfdToolWpf
         public double MidX { get => _midX; set { _midX = value; OnPropertyChanged(); } }
         public double MidY { get => _midY; set { _midY = value; OnPropertyChanged(); } }
 
+        private double _fromAnchorHandleX;
+        public double FromAnchorHandleX
+        {
+            get => _fromAnchorHandleX;
+            private set
+            {
+                if (Math.Abs(_fromAnchorHandleX - value) < 0.0001) return;
+                _fromAnchorHandleX = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private double _fromAnchorHandleY;
+        public double FromAnchorHandleY
+        {
+            get => _fromAnchorHandleY;
+            private set
+            {
+                if (Math.Abs(_fromAnchorHandleY - value) < 0.0001) return;
+                _fromAnchorHandleY = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private double _toAnchorHandleX;
+        public double ToAnchorHandleX
+        {
+            get => _toAnchorHandleX;
+            private set
+            {
+                if (Math.Abs(_toAnchorHandleX - value) < 0.0001) return;
+                _toAnchorHandleX = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private double _toAnchorHandleY;
+        public double ToAnchorHandleY
+        {
+            get => _toAnchorHandleY;
+            private set
+            {
+                if (Math.Abs(_toAnchorHandleY - value) < 0.0001) return;
+                _toAnchorHandleY = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanEditFromAnchor => Source != null;
+        public bool CanEditToAnchor => Target != null;
+
         private string _text = "データフロー";
         public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
 
@@ -61,11 +112,82 @@ namespace DfdToolWpf
             }
         }
 
+        private bool _isFromAnchorManual;
+        public bool IsFromAnchorManual
+        {
+            get => _isFromAnchorManual;
+            set
+            {
+                if (_isFromAnchorManual == value) return;
+                _isFromAnchorManual = value;
+                OnPropertyChanged();
+                UpdateGeometry();
+            }
+        }
+
+        private double _fromAnchorRatio;
+        public double FromAnchorRatio
+        {
+            get => _fromAnchorRatio;
+            set
+            {
+                double newValue = NormalizeRatio(value);
+                if (Math.Abs(_fromAnchorRatio - newValue) < 0.000001) return;
+                _fromAnchorRatio = newValue;
+                OnPropertyChanged();
+                UpdateGeometry();
+            }
+        }
+
+        private bool _isToAnchorManual;
+        public bool IsToAnchorManual
+        {
+            get => _isToAnchorManual;
+            set
+            {
+                if (_isToAnchorManual == value) return;
+                _isToAnchorManual = value;
+                OnPropertyChanged();
+                UpdateGeometry();
+            }
+        }
+
+        private double _toAnchorRatio;
+        public double ToAnchorRatio
+        {
+            get => _toAnchorRatio;
+            set
+            {
+                double newValue = NormalizeRatio(value);
+                if (Math.Abs(_toAnchorRatio - newValue) < 0.000001) return;
+                _toAnchorRatio = newValue;
+                OnPropertyChanged();
+                UpdateGeometry();
+            }
+        }
+
+        private static double NormalizeRatio(double ratio)
+        {
+            if (double.IsNaN(ratio) || double.IsInfinity(ratio)) return 0.0;
+            double normalized = ratio % 1.0;
+            if (normalized < 0) normalized += 1.0;
+            return normalized;
+        }
+
         private bool _isEditing;
         public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
 
         private bool _isSelected;
-        public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value) return;
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
 
         private string _strokeColor = "Black";
         public string StrokeColor
@@ -220,6 +342,11 @@ namespace DfdToolWpf
             Point lastPt = pts[pts.Count - 1];
             Point endPt = GetEndPoint(lastPt);
             pts.Add(endPt);
+
+            FromAnchorHandleX = startPt.X;
+            FromAnchorHandleY = startPt.Y;
+            ToAnchorHandleX = endPt.X;
+            ToAnchorHandleY = endPt.Y;
 
             double angle = GetLastSegmentAngle(pts);
 
@@ -477,7 +604,14 @@ namespace DfdToolWpf
                 return new Point(TargetBranchPoint.X, TargetBranchPoint.Y);
             }
 
-            return Target != null ? GetEdgePoint(Target, fromPoint) : fromPoint;
+            if (Target == null)
+            {
+                return fromPoint;
+            }
+
+            return IsToAnchorManual
+                ? GetBorderPointFromRatio(Target, ToAnchorRatio)
+                : GetEdgePoint(Target, fromPoint);
         }
 
         private Point GetStartPoint(Point towardPoint)
@@ -487,7 +621,14 @@ namespace DfdToolWpf
                 return new Point(SourceBranchPoint.X, SourceBranchPoint.Y);
             }
 
-            return Source != null ? GetEdgePoint(Source, towardPoint) : towardPoint;
+            if (Source == null)
+            {
+                return towardPoint;
+            }
+
+            return IsFromAnchorManual
+                ? GetBorderPointFromRatio(Source, FromAnchorRatio)
+                : GetEdgePoint(Source, towardPoint);
         }
 
         private double GetLastSegmentAngle(List<Point> points)
@@ -502,6 +643,189 @@ namespace DfdToolWpf
             }
 
             return 0;
+        }
+
+        public Point GetBorderPointFromRatio(NodeViewModel node, double ratio)
+        {
+            ratio = NormalizeRatio(ratio);
+
+            if (node.Type == EditorMode.Process)
+            {
+                return GetEllipseBorderPointFromRatio(node, ratio);
+            }
+
+            // 第一段階では、矩形系・DB系・文書系はノードの外接矩形上の比率として扱う。
+            // これにより、図形の移動・リサイズ後も同じ外枠位置へ接点を復元できる。
+            return GetRectangleBorderPointFromRatio(node, ratio);
+        }
+
+        public double GetBorderRatioFromPoint(NodeViewModel node, Point canvasPoint)
+        {
+            if (node.Type == EditorMode.Process)
+            {
+                return GetEllipseBorderRatioFromPoint(node, canvasPoint);
+            }
+
+            Point borderPoint = GetNearestPointOnRectangleBorder(node, canvasPoint);
+            return GetRectangleBorderRatioFromPoint(node, borderPoint);
+        }
+
+        public Point GetNearestPointOnNodeBorder(NodeViewModel node, Point canvasPoint)
+        {
+            if (node.Type == EditorMode.Process)
+            {
+                double ratio = GetEllipseBorderRatioFromPoint(node, canvasPoint);
+                return GetEllipseBorderPointFromRatio(node, ratio);
+            }
+
+            return GetNearestPointOnRectangleBorder(node, canvasPoint);
+        }
+
+        public void SetManualFromAnchorFromPoint(Point canvasPoint)
+        {
+            if (Source == null) return;
+            FromAnchorRatio = GetBorderRatioFromPoint(Source, canvasPoint);
+            IsFromAnchorManual = true;
+        }
+
+        public void SetManualToAnchorFromPoint(Point canvasPoint)
+        {
+            if (Target == null) return;
+            ToAnchorRatio = GetBorderRatioFromPoint(Target, canvasPoint);
+            IsToAnchorManual = true;
+        }
+
+        public void ResetFromAnchorToAuto()
+        {
+            IsFromAnchorManual = false;
+        }
+
+        public void ResetToAnchorToAuto()
+        {
+            IsToAnchorManual = false;
+        }
+
+        public void ResetAnchorsToAuto()
+        {
+            IsFromAnchorManual = false;
+            IsToAnchorManual = false;
+        }
+
+        private static Point GetRectangleBorderPointFromRatio(NodeViewModel node, double ratio)
+        {
+            double left = node.X;
+            double top = node.Y;
+            double width = Math.Max(0.0001, node.Width);
+            double height = Math.Max(0.0001, node.Height);
+            double perimeter = 2.0 * (width + height);
+            double d = NormalizeRatio(ratio) * perimeter;
+
+            if (d <= width)
+            {
+                return new Point(left + d, top);
+            }
+
+            d -= width;
+            if (d <= height)
+            {
+                return new Point(left + width, top + d);
+            }
+
+            d -= height;
+            if (d <= width)
+            {
+                return new Point(left + width - d, top + height);
+            }
+
+            d -= width;
+            return new Point(left, top + height - d);
+        }
+
+        private static double GetRectangleBorderRatioFromPoint(NodeViewModel node, Point borderPoint)
+        {
+            double left = node.X;
+            double top = node.Y;
+            double right = node.X + node.Width;
+            double bottom = node.Y + node.Height;
+            double width = Math.Max(0.0001, node.Width);
+            double height = Math.Max(0.0001, node.Height);
+            double perimeter = 2.0 * (width + height);
+
+            const double tolerance = 0.001;
+            double distance;
+
+            if (Math.Abs(borderPoint.Y - top) <= tolerance)
+            {
+                distance = borderPoint.X - left;
+            }
+            else if (Math.Abs(borderPoint.X - right) <= tolerance)
+            {
+                distance = width + (borderPoint.Y - top);
+            }
+            else if (Math.Abs(borderPoint.Y - bottom) <= tolerance)
+            {
+                distance = width + height + (right - borderPoint.X);
+            }
+            else
+            {
+                distance = width + height + width + (bottom - borderPoint.Y);
+            }
+
+            return NormalizeRatio(distance / perimeter);
+        }
+
+        private static Point GetNearestPointOnRectangleBorder(NodeViewModel node, Point canvasPoint)
+        {
+            double left = node.X;
+            double top = node.Y;
+            double right = node.X + node.Width;
+            double bottom = node.Y + node.Height;
+
+            double clampedX = Math.Max(left, Math.Min(right, canvasPoint.X));
+            double clampedY = Math.Max(top, Math.Min(bottom, canvasPoint.Y));
+
+            var candidates = new[]
+            {
+                new Point(clampedX, top),
+                new Point(right, clampedY),
+                new Point(clampedX, bottom),
+                new Point(left, clampedY)
+            };
+
+            Point best = candidates[0];
+            double bestDistance = GetDistanceSquared(canvasPoint, best);
+
+            for (int i = 1; i < candidates.Length; i++)
+            {
+                double distance = GetDistanceSquared(canvasPoint, candidates[i]);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = candidates[i];
+                }
+            }
+
+            return best;
+        }
+
+        private static Point GetEllipseBorderPointFromRatio(NodeViewModel node, double ratio)
+        {
+            double angle = NormalizeRatio(ratio) * Math.PI * 2.0;
+            double cx = node.CenterX;
+            double cy = node.CenterY;
+            double rx = Math.Max(0.0001, node.Width / 2.0);
+            double ry = Math.Max(0.0001, node.Height / 2.0);
+
+            return new Point(cx + Math.Cos(angle) * rx, cy + Math.Sin(angle) * ry);
+        }
+
+        private static double GetEllipseBorderRatioFromPoint(NodeViewModel node, Point canvasPoint)
+        {
+            double dx = canvasPoint.X - node.CenterX;
+            double dy = canvasPoint.Y - node.CenterY;
+            double angle = Math.Atan2(dy, dx);
+            if (angle < 0) angle += Math.PI * 2.0;
+            return NormalizeRatio(angle / (Math.PI * 2.0));
         }
 
         private Point GetEdgePoint(NodeViewModel node, Point towardPoint)

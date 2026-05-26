@@ -166,6 +166,60 @@ namespace DfdToolWpf
             SetSelectedConnectionArrowVisibility(sender, !conn.IsArrowVisible);
         }
 
+
+        private void ResetConnectionAnchorToAuto(object sender, bool resetFrom, bool resetTo)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            bool willChange = (resetFrom && conn.IsFromAnchorManual) ||
+                              (resetTo && conn.IsToAnchorManual);
+
+            if (!willChange)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+
+            if (resetFrom && resetTo)
+            {
+                conn.ResetAnchorsToAuto();
+            }
+            else
+            {
+                if (resetFrom)
+                {
+                    conn.ResetFromAnchorToAuto();
+                }
+
+                if (resetTo)
+                {
+                    conn.ResetToAnchorToAuto();
+                }
+            }
+
+            ViewModel.MarkDirty();
+        }
+
+        private void MenuItem_ResetFromAnchorToAuto_Click(object sender, RoutedEventArgs e)
+        {
+            ResetConnectionAnchorToAuto(sender, resetFrom: true, resetTo: false);
+        }
+
+        private void MenuItem_ResetToAnchorToAuto_Click(object sender, RoutedEventArgs e)
+        {
+            ResetConnectionAnchorToAuto(sender, resetFrom: false, resetTo: true);
+        }
+
+        private void MenuItem_ResetAnchorsToAuto_Click(object sender, RoutedEventArgs e)
+        {
+            ResetConnectionAnchorToAuto(sender, resetFrom: true, resetTo: true);
+        }
+
         private void MenuItem_ConnectionShowText_Click(object sender, RoutedEventArgs e)
         {
             SetSelectedConnectionTextVisibility(sender, true);
@@ -341,6 +395,53 @@ namespace DfdToolWpf
             }
         }
 
+
+
+
+        private void ConnectionAnchor_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            if (sender is not Thumb thumb || thumb.DataContext is not ConnectionViewModel conn)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+            ViewModel.ResetSelection();
+            conn.IsSelected = true;
+
+            string side = thumb.Tag?.ToString() ?? string.Empty;
+            connectionAnchorRawPoint = side == "From"
+                ? new Point(conn.FromAnchorHandleX, conn.FromAnchorHandleY)
+                : new Point(conn.ToAnchorHandleX, conn.ToAnchorHandleY);
+
+            e.Handled = true;
+        }
+
+        private void ConnectionAnchor_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            if (sender is not Thumb thumb || thumb.DataContext is not ConnectionViewModel conn)
+            {
+                return;
+            }
+
+            connectionAnchorRawPoint = new Point(
+                connectionAnchorRawPoint.X + e.HorizontalChange,
+                connectionAnchorRawPoint.Y + e.VerticalChange);
+
+            string side = thumb.Tag?.ToString() ?? string.Empty;
+
+            if (side == "From")
+            {
+                conn.SetManualFromAnchorFromPoint(connectionAnchorRawPoint);
+            }
+            else
+            {
+                conn.SetManualToAnchorFromPoint(connectionAnchorRawPoint);
+            }
+
+            ViewModel.MarkDirty();
+            e.Handled = true;
+        }
 
         private void BranchPoint_DragStarted(object sender, DragStartedEventArgs e)
         {

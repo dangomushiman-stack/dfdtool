@@ -21,6 +21,7 @@
                 <Separator />
                 <MenuItem Header="🖼️ 画像を貼り付け" Click="MenuItem_PasteImage_Click" InputGestureText="Ctrl+V" />
                 <MenuItem Header="🖼️ 画像ファイルを挿入" Click="MenuItem_InsertImageFile_Click" />
+                
             </MenuItem>
             <MenuItem Header="表示">
                 <MenuItem Header="グリッド表示"
@@ -45,6 +46,7 @@
             <RadioButton Content="吹出付箋" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="StickySpeechBubble" Background="#FFF4A8" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <RadioButton Content="↗️ 矢印" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Arrow" Background="#DDF" />
+            <RadioButton Content="接点編集" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="AnchorEdit" Background="#EAF7FF" ToolTip="選択した線分の始点・終点を図形外枠上で調整します" />
             <Rectangle Width="2" Fill="DarkGray" Margin="5"/>
             <CheckBox Content="グリッドスナップ" IsChecked="{Binding SnapToGrid}" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
         </StackPanel>
@@ -255,6 +257,12 @@
                                                 <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
                                                 <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
                                             </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="接点">
+                                                <MenuItem Header="始点を自動に戻す" Click="MenuItem_ResetFromAnchorToAuto_Click"/>
+                                                <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
+                                                <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
+                                            </MenuItem>
                                         </ContextMenu>
                                     </Path.ContextMenu>
                                     <Path.Style>
@@ -300,6 +308,83 @@
                                         </Style>
                                     </Polygon.Style>
                                 </Polygon>
+
+                                <!-- 接点編集モード用：始点・終点の手動接点ハンドル -->
+                                <Thumb Width="14"
+                                       Height="14"
+                                       Canvas.Left="{Binding FromAnchorHandleX}"
+                                       Canvas.Top="{Binding FromAnchorHandleY}"
+                                       Cursor="SizeAll"
+                                       Tag="From"
+                                       ToolTip="始点接点：ドラッグで図形外枠上を移動"
+                                       DragStarted="ConnectionAnchor_DragStarted"
+                                       DragDelta="ConnectionAnchor_DragDelta"
+                                       Panel.ZIndex="30">
+                                    <Thumb.Style>
+                                        <Style TargetType="Thumb">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsSelected}" Value="True" />
+                                                        <Condition Binding="{Binding CanEditFromAnchor}" Value="True" />
+                                                        <Condition Binding="{Binding DataContext.CurrentMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="AnchorEdit" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Thumb.Style>
+                                    <Thumb.RenderTransform>
+                                        <TranslateTransform X="-7" Y="-7" />
+                                    </Thumb.RenderTransform>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Grid Background="Transparent">
+                                                <Ellipse Fill="#EAF7FF" Stroke="#0099CC" StrokeThickness="2" />
+                                                <Ellipse Width="4" Height="4" Fill="#0099CC" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+
+                                <Thumb Width="14"
+                                       Height="14"
+                                       Canvas.Left="{Binding ToAnchorHandleX}"
+                                       Canvas.Top="{Binding ToAnchorHandleY}"
+                                       Cursor="SizeAll"
+                                       Tag="To"
+                                       ToolTip="終点接点：ドラッグで図形外枠上を移動"
+                                       DragStarted="ConnectionAnchor_DragStarted"
+                                       DragDelta="ConnectionAnchor_DragDelta"
+                                       Panel.ZIndex="31">
+                                    <Thumb.Style>
+                                        <Style TargetType="Thumb">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsSelected}" Value="True" />
+                                                        <Condition Binding="{Binding CanEditToAnchor}" Value="True" />
+                                                        <Condition Binding="{Binding DataContext.CurrentMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="AnchorEdit" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Thumb.Style>
+                                    <Thumb.RenderTransform>
+                                        <TranslateTransform X="-7" Y="-7" />
+                                    </Thumb.RenderTransform>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Grid Background="Transparent">
+                                                <Ellipse Fill="#FFF2E5" Stroke="#FF8C00" StrokeThickness="2" />
+                                                <Ellipse Width="4" Height="4" Fill="#FF8C00" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
 
                                 <ItemsControl ItemsSource="{Binding Waypoints}" Panel.ZIndex="10">
                                     <ItemsControl.Style>
@@ -381,6 +466,12 @@
                                                 <MenuItem Header="緑" Tag="#5CB85C" Click="MenuItem_SetConnectionColor_Click"/>
                                                 <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
                                                 <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="接点">
+                                                <MenuItem Header="始点を自動に戻す" Click="MenuItem_ResetFromAnchorToAuto_Click"/>
+                                                <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
+                                                <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
                                             </MenuItem>
                                         </ContextMenu>
                                     </Grid.ContextMenu>

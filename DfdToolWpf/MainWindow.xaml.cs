@@ -57,6 +57,9 @@ namespace DfdToolWpf
         private double branchPointRawX;
         private double branchPointRawY;
 
+        // 接点編集モードの接点ハンドルドラッグ用
+        private Point connectionAnchorRawPoint;
+
         // 矢印モードで「既存矢印 → 図形」を選んで分岐線を作るための一時状態
         private ConnectionViewModel? pendingBranchParentConnection;
         private Point pendingBranchPointPosition;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -705,6 +705,10 @@ namespace DfdToolWpf
                         Text = c.Text,
                         IsTextVisible = c.IsTextVisible,
                         IsArrowVisible = c.IsArrowVisible,
+                        IsFromAnchorManual = c.IsFromAnchorManual,
+                        FromAnchorRatio = c.FromAnchorRatio,
+                        IsToAnchorManual = c.IsToAnchorManual,
+                        ToAnchorRatio = c.ToAnchorRatio,
                         StrokeColor = c.StrokeColor,
                         IsDashed = c.IsDashed,
                         DashStyle = c.DashStyle
@@ -951,6 +955,10 @@ namespace DfdToolWpf
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
                     IsArrowVisible = data.IsArrowVisible ?? true,
+                    IsFromAnchorManual = data.IsFromAnchorManual ?? false,
+                    FromAnchorRatio = data.FromAnchorRatio ?? 0.0,
+                    IsToAnchorManual = data.IsToAnchorManual ?? false,
+                    ToAnchorRatio = data.ToAnchorRatio ?? 0.0,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -967,6 +975,10 @@ namespace DfdToolWpf
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
                     IsArrowVisible = data.IsArrowVisible ?? true,
+                    IsFromAnchorManual = data.IsFromAnchorManual ?? false,
+                    FromAnchorRatio = data.FromAnchorRatio ?? 0.0,
+                    IsToAnchorManual = data.IsToAnchorManual ?? false,
+                    ToAnchorRatio = data.ToAnchorRatio ?? 0.0,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -983,6 +995,10 @@ namespace DfdToolWpf
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
                     IsArrowVisible = data.IsArrowVisible ?? true,
+                    IsFromAnchorManual = data.IsFromAnchorManual ?? false,
+                    FromAnchorRatio = data.FromAnchorRatio ?? 0.0,
+                    IsToAnchorManual = data.IsToAnchorManual ?? false,
+                    ToAnchorRatio = data.ToAnchorRatio ?? 0.0,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -999,6 +1015,10 @@ namespace DfdToolWpf
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
                     IsArrowVisible = data.IsArrowVisible ?? true,
+                    IsFromAnchorManual = data.IsFromAnchorManual ?? false,
+                    FromAnchorRatio = data.FromAnchorRatio ?? 0.0,
+                    IsToAnchorManual = data.IsToAnchorManual ?? false,
+                    ToAnchorRatio = data.ToAnchorRatio ?? 0.0,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
