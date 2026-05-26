@@ -1,7 +1,7 @@
-﻿<Window x:Class="DfdToolWpf.MainWindow"
+<Window x:Class="DfdToolWpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MVVM版 DFDエディタ" Height="600" Width="1100" KeyDown="Window_KeyDown" UseLayoutRounding="True">
+        Title="MVVM版 DFDエディタ" Height="600" Width="1100" KeyDown="Window_KeyDown" UseLayoutRounding="True" Icon="Assets/AppIcon.ico">
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="#F7F7F7">
             <MenuItem Header="ファイル">
