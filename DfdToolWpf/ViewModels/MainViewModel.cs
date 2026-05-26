@@ -702,6 +702,7 @@ namespace DfdToolWpf
                         ToBranchPointId = c.TargetBranchPoint?.Id ?? Guid.Empty,
                         Text = c.Text,
                         IsTextVisible = c.IsTextVisible,
+                        IsArrowVisible = c.IsArrowVisible,
                         StrokeColor = c.StrokeColor,
                         IsDashed = c.IsDashed,
                         DashStyle = c.DashStyle
@@ -946,6 +947,7 @@ namespace DfdToolWpf
                     Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
+                    IsArrowVisible = data.IsArrowVisible ?? true,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -961,6 +963,7 @@ namespace DfdToolWpf
                     Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
+                    IsArrowVisible = data.IsArrowVisible ?? true,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -976,6 +979,7 @@ namespace DfdToolWpf
                     Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
+                    IsArrowVisible = data.IsArrowVisible ?? true,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };
@@ -991,6 +995,7 @@ namespace DfdToolWpf
                     Id = data.Id == Guid.Empty ? Guid.NewGuid() : data.Id,
                     Text = data.Text ?? "データフロー",
                     IsTextVisible = data.IsTextVisible ?? true,
+                    IsArrowVisible = data.IsArrowVisible ?? true,
                     StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
                     DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
                 };

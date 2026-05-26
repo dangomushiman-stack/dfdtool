@@ -49,6 +49,18 @@ namespace DfdToolWpf
             }
         }
 
+        private bool _isArrowVisible = true;
+        public bool IsArrowVisible
+        {
+            get => _isArrowVisible;
+            set
+            {
+                if (_isArrowVisible == value) return;
+                _isArrowVisible = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool _isEditing;
         public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
 

@@ -18,6 +18,7 @@ namespace DfdToolWpf
             public Guid ToBranchPointId { get; set; }
             public string Text { get; set; }
             public bool? IsTextVisible { get; set; }
+            public bool? IsArrowVisible { get; set; }
             public string StrokeColor { get; set; } = "Black";
             public bool IsDashed { get; set; }
             public ConnectionDashStyle? DashStyle { get; set; }

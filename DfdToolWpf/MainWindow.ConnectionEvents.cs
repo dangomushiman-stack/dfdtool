@@ -137,6 +137,35 @@ namespace DfdToolWpf
             SetSelectedConnectionTextVisibility(sender, !conn.IsTextVisible);
         }
 
+        private void SetSelectedConnectionArrowVisibility(object sender, bool isVisible)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            if (conn.IsArrowVisible == isVisible)
+            {
+                return;
+            }
+
+            ViewModel.SaveUndoState();
+            conn.IsArrowVisible = isVisible;
+            ViewModel.MarkDirty();
+        }
+
+        private void MenuItem_ConnectionToggleArrowVisibility_Click(object sender, RoutedEventArgs e)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            SetSelectedConnectionArrowVisibility(sender, !conn.IsArrowVisible);
+        }
+
         private void MenuItem_ConnectionShowText_Click(object sender, RoutedEventArgs e)
         {
             SetSelectedConnectionTextVisibility(sender, true);
