@@ -39,7 +39,20 @@ namespace DfdToolWpf
     
             public bool CanDeleteSheet => Sheets.Count > 1;
     
-            public EditorMode CurrentMode { get; set; } = EditorMode.Process;
+            private EditorMode _currentMode = EditorMode.Process;
+            public EditorMode CurrentMode
+            {
+                get => _currentMode;
+                set
+                {
+                    if (_currentMode == value) return;
+                    _currentMode = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsAnchorEditMode));
+                }
+            }
+
+            public bool IsAnchorEditMode => CurrentMode == EditorMode.AnchorEdit;
             private int nodeCount = 1;
             private NodeViewModel firstSelectedNode = null;
     
@@ -123,7 +136,6 @@ namespace DfdToolWpf
                 OnPropertyChanged(nameof(Connections));
                 OnPropertyChanged(nameof(BranchPoints));
                 OnPropertyChanged(nameof(CanDeleteSheet));
-                OnPropertyChanged(nameof(CurrentMode));
             }
 
             public void SaveUndoState()

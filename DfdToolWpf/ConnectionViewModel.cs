@@ -189,6 +189,17 @@ namespace DfdToolWpf
             }
         }
 
+        public void NotifyAnchorHandleVisibilityChanged()
+        {
+            OnPropertyChanged(nameof(IsSelected));
+            OnPropertyChanged(nameof(CanEditFromAnchor));
+            OnPropertyChanged(nameof(CanEditToAnchor));
+            OnPropertyChanged(nameof(FromAnchorHandleX));
+            OnPropertyChanged(nameof(FromAnchorHandleY));
+            OnPropertyChanged(nameof(ToAnchorHandleX));
+            OnPropertyChanged(nameof(ToAnchorHandleY));
+        }
+
         private string _strokeColor = "Black";
         public string StrokeColor
         {

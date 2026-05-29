@@ -21,7 +21,6 @@
                 <Separator />
                 <MenuItem Header="🖼️ 画像を貼り付け" Click="MenuItem_PasteImage_Click" InputGestureText="Ctrl+V" />
                 <MenuItem Header="🖼️ 画像ファイルを挿入" Click="MenuItem_InsertImageFile_Click" />
-                
             </MenuItem>
             <MenuItem Header="表示">
                 <MenuItem Header="グリッド表示"
@@ -217,6 +216,12 @@
                                             <MenuItem Header="橙" Tag="#F0AD4E" Click="MenuItem_SetConnectionColor_Click"/>
                                             <MenuItem Header="紫" Tag="#7E57C2" Click="MenuItem_SetConnectionColor_Click"/>
                                         </MenuItem>
+                                        <Separator/>
+                                        <MenuItem Header="接点">
+                                            <MenuItem Header="始点を自動に戻す" Click="MenuItem_ResetFromAnchorToAuto_Click"/>
+                                            <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
+                                            <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
+                                        </MenuItem>
                                     </ContextMenu>
                                 </Canvas.ContextMenu>
 
@@ -328,7 +333,7 @@
                                                     <MultiDataTrigger.Conditions>
                                                         <Condition Binding="{Binding IsSelected}" Value="True" />
                                                         <Condition Binding="{Binding CanEditFromAnchor}" Value="True" />
-                                                        <Condition Binding="{Binding DataContext.CurrentMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="AnchorEdit" />
+                                                        <Condition Binding="{Binding DataContext.IsAnchorEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
                                                     </MultiDataTrigger.Conditions>
                                                     <Setter Property="Visibility" Value="Visible" />
                                                 </MultiDataTrigger>
@@ -366,7 +371,7 @@
                                                     <MultiDataTrigger.Conditions>
                                                         <Condition Binding="{Binding IsSelected}" Value="True" />
                                                         <Condition Binding="{Binding CanEditToAnchor}" Value="True" />
-                                                        <Condition Binding="{Binding DataContext.CurrentMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="AnchorEdit" />
+                                                        <Condition Binding="{Binding DataContext.IsAnchorEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
                                                     </MultiDataTrigger.Conditions>
                                                     <Setter Property="Visibility" Value="Visible" />
                                                 </MultiDataTrigger>

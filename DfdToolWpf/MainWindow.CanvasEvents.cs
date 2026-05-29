@@ -73,6 +73,26 @@ namespace DfdToolWpf
             return ViewModel.CurrentMode == EditorMode.Select || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         }
 
+        private void CancelRangeSelectionIfNeeded()
+        {
+            if (_rangeSelectionController.IsSelecting)
+            {
+                _rangeSelectionController.Cancel();
+            }
+
+            if (RangeSelectionRectangle != null)
+            {
+                RangeSelectionRectangle.Visibility = Visibility.Collapsed;
+                RangeSelectionRectangle.Width = 0;
+                RangeSelectionRectangle.Height = 0;
+            }
+
+            if (MainCanvas != null && MainCanvas.IsMouseCaptured)
+            {
+                MainCanvas.ReleaseMouseCapture();
+            }
+        }
+
         private void BeginRangeSelection(Point startPoint)
         {
             _rangeSelectionController.Begin(startPoint);

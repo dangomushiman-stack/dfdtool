@@ -107,11 +107,28 @@ namespace DfdToolWpf
 
         private void BtnMode_Click(object sender, RoutedEventArgs e)
         {
+            // 範囲選択モードでクリックした直後に別モードへ切り替えると、
+            // MouseCapture や範囲選択中フラグが残り、次のモードのクリックを
+            // MainCanvas が奪ってしまうことがある。
+            // モード切替時は必ず範囲選択状態を終了してから切り替える。
+            CancelRangeSelectionIfNeeded();
+
             if (sender is FrameworkElement btn && btn.Tag != null)
             {
                 ViewModel.CurrentMode = (EditorMode)Enum.Parse(typeof(EditorMode), btn.Tag.ToString());
                 pendingBranchParentConnection = null;
                 ViewModel.ResetSelection();
+                NotifyAllConnectionAnchorHandleVisibilityChanged();
+            }
+        }
+
+        private void NotifyAllConnectionAnchorHandleVisibilityChanged()
+        {
+            if (ViewModel.Connections == null) return;
+
+            foreach (var connection in ViewModel.Connections)
+            {
+                connection.NotifyAnchorHandleVisibilityChanged();
             }
         }
 

@@ -245,9 +245,10 @@ namespace DfdToolWpf
 
                 ViewModel.ResetSelection();
                 conn.IsSelected = true;
+                conn.NotifyAnchorHandleVisibilityChanged();
                 pendingBranchParentConnection = null;
 
-                if (e.ClickCount == 2)
+                if (e.ClickCount == 2 && ViewModel.CurrentMode != EditorMode.AnchorEdit)
                 {
                     InsertWaypoint(conn, p, false);
                 }
@@ -543,6 +544,15 @@ namespace DfdToolWpf
             if (ViewModel.CurrentMode == EditorMode.Arrow)
             {
                 HandleConnectionClickInArrowMode(conn, e.GetPosition(MainCanvas));
+                e.Handled = true;
+                return;
+            }
+
+            if (ViewModel.CurrentMode == EditorMode.AnchorEdit)
+            {
+                ViewModel.ResetSelection();
+                conn.IsSelected = true;
+                conn.NotifyAnchorHandleVisibilityChanged();
                 e.Handled = true;
                 return;
             }
