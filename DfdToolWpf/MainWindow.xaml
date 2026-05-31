@@ -6,6 +6,7 @@
         <Menu DockPanel.Dock="Top" Background="#F7F7F7">
             <MenuItem Header="ファイル">
                 <MenuItem Header="📄 新規作成" Click="BtnNew_Click" InputGestureText="Ctrl+N" />
+                <MenuItem Header="🪟 新しいウィンドウ" Click="BtnNewWindow_Click" InputGestureText="Ctrl+Shift+N" />
                 <Separator />
                 <MenuItem Header="💾 上書き保存" Click="BtnOverwriteSave_Click" InputGestureText="Ctrl+S" />
                 <MenuItem Header="💾 名前を付けて保存" Click="BtnSave_Click" InputGestureText="Ctrl+Shift+S" />

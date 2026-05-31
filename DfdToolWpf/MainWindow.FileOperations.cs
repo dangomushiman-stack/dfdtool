@@ -19,6 +19,36 @@ namespace DfdToolWpf
         private string? currentFilePath;
 
 
+
+        private void BtnNewWindow_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string? exePath = Environment.ProcessPath;
+
+                if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+                {
+                    exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                }
+
+                if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+                {
+                    MessageBox.Show("実行ファイルのパスを取得できませんでした。", "新しいウィンドウ");
+                    return;
+                }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("新しいウィンドウを開けませんでした。\n" + ex.Message, "エラー");
+            }
+        }
+
         private void BtnNew_Click(object sender, RoutedEventArgs e)
         {
             if (!ConfirmSaveIfDirty()) return;

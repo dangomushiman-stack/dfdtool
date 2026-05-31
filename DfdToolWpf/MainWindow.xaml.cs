@@ -194,6 +194,13 @@ namespace DfdToolWpf
         {
             if (IsTextEditingNow()) return;
 
+            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.N)
+            {
+                BtnNewWindow_Click(sender, e);
+                e.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.N)
             {
                 BtnNew_Click(sender, e);
