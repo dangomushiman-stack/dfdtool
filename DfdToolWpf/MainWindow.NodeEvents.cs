@@ -105,6 +105,17 @@ namespace DfdToolWpf
                     ViewModel.SaveUndoState();
                     ViewModel.ResetSelection();
                     node.IsSelected = true;
+
+                    if (node.Type == EditorMode.Table)
+                    {
+                        Point localPoint = e.GetPosition((IInputElement)sender);
+                        node.EditingTablePart = localPoint.Y <= 30.0 ? TableEditingPart.Header : TableEditingPart.Body;
+                    }
+                    else
+                    {
+                        node.EditingTablePart = TableEditingPart.None;
+                    }
+
                     node.IsEditing = true;
                     e.Handled = true;
                     return;

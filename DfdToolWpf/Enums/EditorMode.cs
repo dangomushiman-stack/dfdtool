@@ -9,6 +9,6 @@ using System.Windows.Media;
 
 namespace DfdToolWpf
 {
-    public enum EditorMode { Select, Process, Entity, DataStore, Arrow, AnchorEdit, DashEntity, CategoryFrame, ConnectableFrame, Database, HorizontalDatabase, Document, StickyNote, StickySpeechBubble, ImageNode }
+    public enum EditorMode { Select, Process, Entity, DataStore, Arrow, AnchorEdit, DashEntity, CategoryFrame, ConnectableFrame, Database, HorizontalDatabase, Document, StickyNote, StickySpeechBubble, ImageNode, Table }
     
 }

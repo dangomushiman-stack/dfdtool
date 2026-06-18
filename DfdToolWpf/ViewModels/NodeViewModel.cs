@@ -11,6 +11,13 @@ using System.Windows.Media.Imaging;
 
 namespace DfdToolWpf
 {
+    public enum TableEditingPart
+    {
+        None,
+        Header,
+        Body
+    }
+
     public class NodeViewModel : ViewModelBase
         {
             public Guid Id { get; set; } = Guid.NewGuid();
@@ -18,6 +25,10 @@ namespace DfdToolWpf
             private double _width = 100;
             private double _height = 50;
             private string _text;
+            private string _tableHeaderText = string.Empty;
+            private string _tableBodyText = string.Empty;
+            private bool _isSynchronizingTableText;
+            private TableEditingPart _editingTablePart = TableEditingPart.None;
             private string _fileFormat = string.Empty;
             private string _linkUrl = string.Empty;
             private string _imageDataBase64 = string.Empty;
@@ -42,6 +53,10 @@ namespace DfdToolWpf
                     OnPropertyChanged(nameof(StickySpeechBubbleVisibility));
                     OnPropertyChanged(nameof(TailHandleVisibility));
                     OnPropertyChanged(nameof(Layer));
+                    OnPropertyChanged(nameof(IsTable));
+                    OnPropertyChanged(nameof(IsTableHeaderEditing));
+                    OnPropertyChanged(nameof(IsTableBodyEditing));
+                    InitializeTableTextFromTextIfNeeded();
                     RefreshTail();
                 }
             }
@@ -52,6 +67,10 @@ namespace DfdToolWpf
                 OnPropertyChanged(nameof(StickySpeechBubbleVisibility));
                 OnPropertyChanged(nameof(TailHandleVisibility));
                 OnPropertyChanged(nameof(Layer));
+                OnPropertyChanged(nameof(IsTable));
+                OnPropertyChanged(nameof(IsTableHeaderEditing));
+                OnPropertyChanged(nameof(IsTableBodyEditing));
+                InitializeTableTextFromTextIfNeeded();
                 RefreshTail();
             }
             
@@ -59,7 +78,59 @@ namespace DfdToolWpf
             public double Y { get => _y; set { _y = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
             public double Width { get => _width; set { if (value > 0) _width = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterX)); RefreshTail(); } }
             public double Height { get => _height; set { if (value > 0) _height = value; OnPropertyChanged(); OnPropertyChanged(nameof(CenterY)); RefreshTail(); } }
-            public string Text { get => _text; set { _text = value; OnPropertyChanged(); } }
+            public string Text
+            {
+                get => _text;
+                set
+                {
+                    _text = value ?? string.Empty;
+                    OnPropertyChanged();
+
+                    if (!_isSynchronizingTableText && Type == EditorMode.Table)
+                    {
+                        SplitTextIntoTableFields(_text);
+                    }
+                }
+            }
+
+            public string TableHeaderText
+            {
+                get => _tableHeaderText;
+                set
+                {
+                    string newValue = value ?? string.Empty;
+                    if (_tableHeaderText == newValue) return;
+                    _tableHeaderText = newValue;
+                    OnPropertyChanged();
+                    UpdateTextFromTableFields();
+                }
+            }
+
+            public string TableBodyText
+            {
+                get => _tableBodyText;
+                set
+                {
+                    string newValue = value ?? string.Empty;
+                    if (_tableBodyText == newValue) return;
+                    _tableBodyText = newValue;
+                    OnPropertyChanged();
+                    UpdateTextFromTableFields();
+                }
+            }
+
+            public TableEditingPart EditingTablePart
+            {
+                get => _editingTablePart;
+                set
+                {
+                    if (_editingTablePart == value) return;
+                    _editingTablePart = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsTableHeaderEditing));
+                    OnPropertyChanged(nameof(IsTableBodyEditing));
+                }
+            }
             public NodeTextPlacement TextPlacement
             {
                 get => _textPlacement;
@@ -106,7 +177,19 @@ namespace DfdToolWpf
                     OnPropertyChanged(nameof(Layer));
                 }
             }
-            public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); } }
+            public bool IsEditing
+            {
+                get => _isEditing;
+                set
+                {
+                    if (_isEditing == value) return;
+                    _isEditing = value;
+                    if (!_isEditing) EditingTablePart = TableEditingPart.None;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsTableHeaderEditing));
+                    OnPropertyChanged(nameof(IsTableBodyEditing));
+                }
+            }
             public bool IsDashed { get => _isDashed; set { _isDashed = value; OnPropertyChanged(); } }
     
             public double TailTargetX { get => _tailTargetX; set { _tailTargetX = value; OnPropertyChanged(); RefreshTail(); } }
@@ -115,6 +198,9 @@ namespace DfdToolWpf
             public double CenterX => X + Width / 2; 
             public double CenterY => Y + Height / 2;
             public bool IsStickySpeechBubble => Type == EditorMode.StickySpeechBubble;
+            public bool IsTable => Type == EditorMode.Table;
+            public bool IsTableHeaderEditing => IsEditing && Type == EditorMode.Table && EditingTablePart == TableEditingPart.Header;
+            public bool IsTableBodyEditing => IsEditing && Type == EditorMode.Table && EditingTablePart == TableEditingPart.Body;
 
             // 同じ ItemsControl/Canvas 内では、Panel.ZIndex が同じ場合は追加順が前後関係に影響する。
             // 図形の種類ごとにレイヤーを固定し、後から配置した枠が通常図形の手前に来ないようにする。
@@ -161,6 +247,46 @@ namespace DfdToolWpf
             public double TailHandleLocalTop => TailTargetY - Y - 6;
             public string TailPathData { get; private set; } = string.Empty;
             public string TailPathLocalData { get; private set; } = string.Empty;
+
+            public void InitializeTableTextFromTextIfNeeded()
+            {
+                if (Type != EditorMode.Table) return;
+
+                if (string.IsNullOrEmpty(_tableHeaderText) && string.IsNullOrEmpty(_tableBodyText))
+                {
+                    SplitTextIntoTableFields(_text ?? string.Empty);
+                }
+            }
+
+            private void SplitTextIntoTableFields(string text)
+            {
+                string normalized = (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n");
+                string[] lines = normalized.Split('\n');
+
+                _tableHeaderText = lines.Length > 0 && !string.IsNullOrWhiteSpace(lines[0]) ? lines[0] : "table";
+                _tableBodyText = lines.Length > 1 ? string.Join("\n", lines.Skip(1)) : string.Empty;
+
+                OnPropertyChanged(nameof(TableHeaderText));
+                OnPropertyChanged(nameof(TableBodyText));
+            }
+
+            private void UpdateTextFromTableFields()
+            {
+                if (Type != EditorMode.Table) return;
+
+                _isSynchronizingTableText = true;
+                try
+                {
+                    _text = string.IsNullOrEmpty(_tableBodyText)
+                        ? _tableHeaderText
+                        : $"{_tableHeaderText}\n{_tableBodyText}";
+                    OnPropertyChanged(nameof(Text));
+                }
+                finally
+                {
+                    _isSynchronizingTableText = false;
+                }
+            }
 
             private void UpdateImageSourceFromBase64()
             {

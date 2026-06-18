@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -398,6 +398,8 @@ namespace DfdToolWpf
                     Width = node.Width,
                     Height = node.Height,
                     Text = node.Text,
+                    TableHeaderText = node.TableHeaderText,
+                    TableBodyText = node.TableBodyText,
                     TextPlacement = node.TextPlacement,
                     FileFormat = node.FileFormat,
                     LinkUrl = node.LinkUrl,
@@ -435,6 +437,19 @@ namespace DfdToolWpf
                     IsSelected = false,
                     IsEditing = false
                 };
+
+                if (node.Type == EditorMode.Table)
+                {
+                    if (!string.IsNullOrEmpty(data.TableHeaderText) || !string.IsNullOrEmpty(data.TableBodyText))
+                    {
+                        node.TableHeaderText = data.TableHeaderText ?? string.Empty;
+                        node.TableBodyText = data.TableBodyText ?? string.Empty;
+                    }
+                    else
+                    {
+                        node.InitializeTableTextFromTextIfNeeded();
+                    }
+                }
     
                 if (node.Type == EditorMode.StickySpeechBubble) node.InitializeTailTargetIfNeeded();
                 return node;
@@ -449,6 +464,8 @@ namespace DfdToolWpf
                     case EditorMode.StickyNote:
                     case EditorMode.StickySpeechBubble:
                         return "#D6A600";
+                    case EditorMode.Table:
+                        return "#2E7D32";
                     case EditorMode.ImageNode:
                         return "#888888";
                     default:
@@ -466,6 +483,8 @@ namespace DfdToolWpf
                     case EditorMode.StickyNote:
                     case EditorMode.StickySpeechBubble:
                         return "#FFF4A8";
+                    case EditorMode.Table:
+                        return "#FAFFFA";
                     case EditorMode.ImageNode:
                         return "Transparent";
                     default:
@@ -491,6 +510,14 @@ namespace DfdToolWpf
                     node.Width = 140;
                     node.Height = 80;
                     node.Text = "横向きDB";
+                }
+                else if (type == EditorMode.Table)
+                {
+                    node.Width = 200;
+                    node.Height = 150;
+                    node.TableHeaderText = "users";
+                    node.TableBodyText = "PK id : int\nname : varchar\ncreated_at : datetime";
+                    node.TextPlacement = NodeTextPlacement.TopLeft;
                 }
                 else if (type == EditorMode.Document)
                 {
@@ -702,7 +729,7 @@ namespace DfdToolWpf
                 
                 foreach (var n in sheet.Nodes) 
                 {
-                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, TextPlacement = n.TextPlacement, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
+                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, TableHeaderText = n.TableHeaderText, TableBodyText = n.TableBodyText, TextPlacement = n.TextPlacement, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
                 }
                 
                 foreach (var c in sheet.Connections) 
@@ -866,6 +893,18 @@ namespace DfdToolWpf
                         FillColor = string.IsNullOrWhiteSpace(n.FillColor) ? GetDefaultFillColor(n.Type) : n.FillColor,
                         ImageDataBase64 = n.ImageDataBase64 ?? string.Empty
                     };
+                    if (node.Type == EditorMode.Table)
+                    {
+                        if (!string.IsNullOrEmpty(n.TableHeaderText) || !string.IsNullOrEmpty(n.TableBodyText))
+                        {
+                            node.TableHeaderText = n.TableHeaderText ?? string.Empty;
+                            node.TableBodyText = n.TableBodyText ?? string.Empty;
+                        }
+                        else
+                        {
+                            node.InitializeTableTextFromTextIfNeeded();
+                        }
+                    }
                     if (node.Type == EditorMode.StickySpeechBubble) node.InitializeTailTargetIfNeeded();
                     sheet.Nodes.Add(node); 
                     dict[n.Id] = node; 

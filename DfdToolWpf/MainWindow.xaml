@@ -41,6 +41,7 @@
             <RadioButton Content="データストア" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="DataStore" />
             <RadioButton Content="DB" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Database" />
             <RadioButton Content="横DB" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="HorizontalDatabase" />
+            <RadioButton Content="テーブル" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Table" Background="#E8F5E9" />
             <RadioButton Content="文書" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="Document" />
             <RadioButton Content="付箋" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="StickyNote" Background="#FFF4A8" />
             <RadioButton Content="吹出付箋" Style="{StaticResource {x:Type ToggleButton}}" GroupName="ToolMode" Margin="5" Padding="10,0" Click="BtnMode_Click" Tag="StickySpeechBubble" Background="#FFF4A8" />
@@ -720,6 +721,18 @@
                                                 <Viewbox.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.5"/></Viewbox.Effect>
                                             </Viewbox>
 
+                                            <Border x:Name="ShapeTable" Background="{Binding FillColor}" BorderBrush="{Binding StrokeColor}" BorderThickness="2" CornerRadius="4" Visibility="Collapsed" ClipToBounds="True">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="30" />
+                                                        <RowDefinition Height="*" />
+                                                    </Grid.RowDefinitions>
+                                                    <Border Grid.Row="0" Background="#DFF3E3" BorderBrush="{Binding StrokeColor}" BorderThickness="0,0,0,2" />
+                                                    <Border Grid.Row="1" Background="#FAFFFA" />
+                                                </Grid>
+                                                <Border.Effect><DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="2" Opacity="0.45"/></Border.Effect>
+                                            </Border>
+
                                             <Viewbox x:Name="ShapeDocument" Stretch="Fill" Visibility="Collapsed">
                                                 <Canvas Width="120" Height="80">
                                                     <!-- Document shape: top corners are aligned to node logical bounds: (0,0) and (120,0). -->
@@ -742,7 +755,7 @@
                                             
                                             <Border x:Name="SelectionHighlight" BorderBrush="Orange" BorderThickness="3" Visibility="Collapsed" Margin="-3" CornerRadius="5"/>
                                             
-                                            <Grid Margin="5">
+                                            <Grid x:Name="NodeTextHost" Margin="5">
                                                 <TextBlock Text="{Binding Text}" HorizontalAlignment="{Binding LabelHorizontalAlignment}" VerticalAlignment="{Binding LabelVerticalAlignment}" FontWeight="Bold" x:Name="LabelText" TextWrapping="Wrap" TextAlignment="{Binding LabelTextAlignment}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -763,6 +776,94 @@
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsEditing}" Value="True">
                                                                     <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+                                            </Grid>
+
+                                            <Grid x:Name="TableTextHost" Visibility="Collapsed" ClipToBounds="True">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="30" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0"
+                                                           Text="{Binding TableHeaderText}"
+                                                           Padding="6,2,6,2"
+                                                           FontWeight="Bold"
+                                                           VerticalAlignment="Center"
+                                                           TextWrapping="NoWrap"
+                                                           TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsTableHeaderEditing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <TextBox Grid.Row="0"
+                                                         Text="{Binding TableHeaderText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                         Padding="4,0,4,0"
+                                                         FontWeight="Bold"
+                                                         VerticalContentAlignment="Center"
+                                                         PreviewKeyDown="TextBox_PreviewKeyDown"
+                                                         LostFocus="TextBox_LostFocus"
+                                                         IsVisibleChanged="TextBox_IsVisibleChanged">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsTableHeaderEditing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+
+                                                <TextBlock Grid.Row="1"
+                                                           Text="{Binding TableBodyText}"
+                                                           Padding="6,4,6,4"
+                                                           TextWrapping="Wrap"
+                                                           TextAlignment="Left"
+                                                           VerticalAlignment="Top">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsTableBodyEditing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <TextBox Grid.Row="1"
+                                                         Text="{Binding TableBodyText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                         Padding="4"
+                                                         AcceptsReturn="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalContentAlignment="Left"
+                                                         VerticalContentAlignment="Top"
+                                                         TextAlignment="Left"
+                                                         PreviewKeyDown="TextBox_PreviewKeyDown"
+                                                         LostFocus="TextBox_LostFocus"
+                                                         IsVisibleChanged="TextBox_IsVisibleChanged">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsTableBodyEditing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -838,6 +939,18 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Type}" Value="HorizontalDatabase">
                                                 <Setter TargetName="ShapeHorizontalDatabase" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="Table">
+                                                <Setter TargetName="ShapeTable" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="LabelText" Property="FontWeight" Value="Normal" />
+                                                <Setter TargetName="LabelText" Property="HorizontalAlignment" Value="Left" />
+                                                <Setter TargetName="LabelText" Property="VerticalAlignment" Value="Top" />
+                                                <Setter TargetName="LabelText" Property="TextAlignment" Value="Left" />
+                                                <Setter TargetName="EditTextBox" Property="HorizontalContentAlignment" Value="Left" />
+                                                <Setter TargetName="EditTextBox" Property="VerticalContentAlignment" Value="Top" />
+                                                <Setter TargetName="EditTextBox" Property="TextAlignment" Value="Left" />
+                                                <Setter TargetName="NodeTextHost" Property="Visibility" Value="Collapsed" />
+                                                <Setter TargetName="TableTextHost" Property="Visibility" Value="Visible" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Type}" Value="Document">
                                                 <Setter TargetName="ShapeDocument" Property="Visibility" Value="Visible" />
