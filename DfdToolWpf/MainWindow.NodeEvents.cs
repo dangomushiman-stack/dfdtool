@@ -166,6 +166,59 @@ namespace DfdToolWpf
             return ViewModel.Connections.FirstOrDefault(c => c.Waypoints.Contains(waypoint));
         }
 
+        private IEnumerable<WaypointViewModel> GetWaypointsThatShouldMoveWithSelectedGroup(
+            IEnumerable<NodeViewModel> selectedNodes,
+            IEnumerable<BranchPointViewModel> selectedBranchPoints)
+        {
+            var selectedNodeSet = selectedNodes.ToHashSet();
+            var selectedBranchPointSet = selectedBranchPoints.ToHashSet();
+
+            foreach (var connection in ViewModel.Connections)
+            {
+                bool sourceMoves = IsConnectionEndpointMoving(connection.Source, connection.SourceBranchPoint, selectedNodeSet, selectedBranchPointSet);
+                bool targetMoves = IsConnectionEndpointMoving(connection.Target, connection.TargetBranchPoint, selectedNodeSet, selectedBranchPointSet);
+
+                // 両端が同じ移動グループに含まれる接続線は、折り曲げ点も同じだけ動かす。
+                // 片端だけが選択されている線では、相手側へ伸びる形を保つため折り曲げ点は自動移動しない。
+                if (sourceMoves && targetMoves)
+                {
+                    foreach (var waypoint in connection.Waypoints)
+                    {
+                        yield return waypoint;
+                    }
+                }
+            }
+        }
+
+        private bool IsConnectionEndpointMoving(
+            NodeViewModel? node,
+            BranchPointViewModel? branchPoint,
+            ISet<NodeViewModel> selectedNodeSet,
+            ISet<BranchPointViewModel> selectedBranchPointSet)
+        {
+            if (node != null)
+            {
+                return selectedNodeSet.Contains(node);
+            }
+
+            if (branchPoint != null)
+            {
+                return selectedBranchPointSet.Contains(branchPoint);
+            }
+
+            return false;
+        }
+
+        private IEnumerable<WaypointViewModel> GetWaypointsToMoveForCurrentSelection()
+        {
+            var selectedNodes = ViewModel.Nodes?.Where(n => n.IsSelected).ToList() ?? new List<NodeViewModel>();
+            var selectedBranchPoints = ViewModel.BranchPoints?.Where(p => p.IsSelected).ToList() ?? new List<BranchPointViewModel>();
+
+            return GetSelectedWaypoints()
+                .Concat(GetWaypointsThatShouldMoveWithSelectedGroup(selectedNodes, selectedBranchPoints))
+                .Distinct();
+        }
+
         private int GetSelectedMovableItemCount()
         {
             int selectedNodeCount = ViewModel.Nodes?.Count(n => n.IsSelected) ?? 0;
@@ -271,8 +324,15 @@ namespace DfdToolWpf
                         .Where(p => p.IsSelected)
                         .ToDictionary(p => p, p => new Point(p.X, p.Y));
 
-                    waypointDragStartPositions = GetSelectedWaypoints()
+                    waypointDragStartPositions = GetWaypointsToMoveForCurrentSelection()
                         .ToDictionary(w => w, w => new Point(w.X, w.Y));
+
+                    // 吹き出し付箋は差し先の点がキャンバス絶対座標で保存されている。
+                    // 複数選択で付箋本体だけを動かすと差し先が置いていかれるため、
+                    // 選択中の吹き出し付箋では差し先も同じ移動量で動かす。
+                    calloutTailTargetDragStartPositions = multiDragStartPositions.Keys
+                        .Where(n => n.IsStickySpeechBubble)
+                        .ToDictionary(n => n, n => new Point(n.TailTargetX, n.TailTargetY));
 
                     multiDragAccumulatedX = 0;
                     multiDragAccumulatedY = 0;
@@ -282,6 +342,7 @@ namespace DfdToolWpf
                 multiDragStartPositions = null;
                 branchPointDragStartPositions = null;
                 waypointDragStartPositions = null;
+                calloutTailTargetDragStartPositions = null;
                 dragRawX = node.X;
                 dragRawY = node.Y;
             }
@@ -321,6 +382,15 @@ namespace DfdToolWpf
                         {
                             item.Key.X = Snap(item.Value.X + multiDragAccumulatedX);
                             item.Key.Y = Snap(item.Value.Y + multiDragAccumulatedY);
+                        }
+                    }
+
+                    if (calloutTailTargetDragStartPositions != null)
+                    {
+                        foreach (var item in calloutTailTargetDragStartPositions)
+                        {
+                            item.Key.TailTargetX = Snap(item.Value.X + multiDragAccumulatedX);
+                            item.Key.TailTargetY = Snap(item.Value.Y + multiDragAccumulatedY);
                         }
                     }
 

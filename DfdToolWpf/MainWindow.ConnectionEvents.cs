@@ -78,6 +78,26 @@ namespace DfdToolWpf
             return ViewModel.Connections.FirstOrDefault(c => c.IsSelected);
         }
 
+        private void MenuItem_DeleteConnection_Click(object sender, RoutedEventArgs e)
+        {
+            var conn = GetConnectionFromMenuItem(sender);
+            if (conn == null)
+            {
+                return;
+            }
+
+            // 複数選択済みの線分を右クリックした場合は、その複数選択を維持したまま削除する。
+            // 未選択の線分から開いたメニューなら、その線分だけを選択して削除する。
+            if (!(conn.IsSelected && GetTotalSelectedItemCount() > 1))
+            {
+                ViewModel.ResetSelection();
+                conn.IsSelected = true;
+            }
+
+            ViewModel.DeleteSelected();
+            e.Handled = true;
+        }
+
         private void MenuItem_ConnectionFineDash_Click(object sender, RoutedEventArgs e)
         {
             SetSelectedConnectionDashStyle(sender, ConnectionDashStyle.Fine);

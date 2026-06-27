@@ -79,6 +79,9 @@ namespace DfdToolWpf
         private double waypointDragAccumulatedX;
         private double waypointDragAccumulatedY;
 
+        // 複数選択された吹き出し付箋の差し先（しっぽ先端）のグループドラッグ用
+        private Dictionary<NodeViewModel, Point>? calloutTailTargetDragStartPositions;
+
         public MainWindow()
         {
             InitializeComponent();

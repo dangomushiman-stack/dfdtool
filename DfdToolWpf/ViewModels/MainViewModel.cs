@@ -56,11 +56,12 @@ namespace DfdToolWpf
             private int nodeCount = 1;
             private NodeViewModel firstSelectedNode = null;
     
-            // シンボルコピー用。接続線はコピー対象外で、選択中の1シンボルだけを複製・貼り付けする。
-            private NodeData copiedNodeData = null;
+            // シンボルコピー用。選択中の複数シンボルと、そのシンボル同士を結ぶ接続線をまとめて複製・貼り付けする。
+            private List<NodeData> copiedNodeDataList = new List<NodeData>();
+            private List<ConnectionData> copiedConnectionDataList = new List<ConnectionData>();
             private int copiedNodePasteCount = 1;
 
-            public bool HasCopiedNode => copiedNodeData != null;
+            public bool HasCopiedNode => copiedNodeDataList.Any();
     
             private bool _snapToGrid = true;
             public bool SnapToGrid { get => _snapToGrid; set { _snapToGrid = value; OnPropertyChanged(); } }
@@ -124,7 +125,8 @@ namespace DfdToolWpf
                 Sheets.Clear();
                 nodeCount = 1;
                 firstSelectedNode = null;
-                copiedNodeData = null;
+                copiedNodeDataList.Clear();
+                copiedConnectionDataList.Clear();
                 copiedNodePasteCount = 1;
                 CurrentMode = EditorMode.Process;
 
@@ -317,10 +319,18 @@ namespace DfdToolWpf
     
             public bool CopySelectedNode()
             {
-                var selectedNode = Nodes?.FirstOrDefault(n => n.IsSelected);
-                if (selectedNode == null) return false;
-    
-                copiedNodeData = CreateNodeDataCopy(selectedNode);
+                if (Nodes == null) return false;
+
+                var selectedNodes = Nodes
+                    .Where(n => n.IsSelected)
+                    .ToList();
+
+                if (!selectedNodes.Any()) return false;
+
+                copiedNodeDataList = selectedNodes
+                    .Select(CreateNodeDataCopy)
+                    .ToList();
+                copiedConnectionDataList = CreateSelectedConnectionCopies(selectedNodes);
                 copiedNodePasteCount = 1;
                 OnPropertyChanged(nameof(HasCopiedNode));
                 return true;
@@ -328,38 +338,66 @@ namespace DfdToolWpf
     
             public bool PasteCopiedNode()
             {
-                if (copiedNodeData == null) return false;
+                if (!HasCopiedNode) return false;
+
+                var (baseX, baseY) = GetCopiedNodesBasePoint();
                 double offset = 20 * copiedNodePasteCount;
-                return PasteCopiedNodeAt(copiedNodeData.X + offset, copiedNodeData.Y + offset);
+                return PasteCopiedNodeAt(baseX + offset, baseY + offset);
             }
 
             public bool PasteCopiedNodeAt(double targetX, double targetY)
             {
-                if (SelectedSheet == null || copiedNodeData == null) return false;
+                if (SelectedSheet == null || !HasCopiedNode) return false;
                 SaveUndoState();
 
+                var (baseX, baseY) = GetCopiedNodesBasePoint();
                 double pasteX = targetX;
                 double pasteY = targetY;
 
-                // クリック位置がコピー元と完全に同じ場合は、貼り付いたことが見えるように右下へずらす。
+                // クリック位置がコピー元グループの左上と完全に同じ場合は、貼り付いたことが見えるように右下へずらす。
                 // 連続で貼り付けた場合は、20pxずつ追加でずらす。
-                if (IsSameCoordinate(pasteX, copiedNodeData.X) && IsSameCoordinate(pasteY, copiedNodeData.Y))
+                if (IsSameCoordinate(pasteX, baseX) && IsSameCoordinate(pasteY, baseY))
                 {
                     double offset = 20 * copiedNodePasteCount;
                     pasteX += offset;
                     pasteY += offset;
                 }
 
-                double offsetX = pasteX - copiedNodeData.X;
-                double offsetY = pasteY - copiedNodeData.Y;
-                var pastedNode = CreateNodeFromData(copiedNodeData, offsetX, offsetY);
-    
+                double offsetX = pasteX - baseX;
+                double offsetY = pasteY - baseY;
+
                 ResetSelection();
-                pastedNode.IsSelected = true;
-                Nodes.Add(pastedNode);
-    
+
+                var pastedNodeMap = new Dictionary<Guid, NodeViewModel>();
+
+                foreach (var copiedData in copiedNodeDataList)
+                {
+                    var pastedNode = CreateNodeFromData(copiedData, offsetX, offsetY);
+                    pastedNode.IsSelected = true;
+                    Nodes.Add(pastedNode);
+                    pastedNodeMap[copiedData.Id] = pastedNode;
+                }
+
+                foreach (var copiedConnectionData in copiedConnectionDataList)
+                {
+                    var pastedConnection = CreateConnectionFromCopiedData(copiedConnectionData, pastedNodeMap, offsetX, offsetY);
+                    if (pastedConnection == null) continue;
+                    pastedConnection.IsSelected = true;
+                    Connections.Add(pastedConnection);
+                }
+
                 copiedNodePasteCount++;
                 return true;
+            }
+
+            private (double X, double Y) GetCopiedNodesBasePoint()
+            {
+                if (!HasCopiedNode) return (0, 0);
+
+                return (
+                    copiedNodeDataList.Min(n => n.X),
+                    copiedNodeDataList.Min(n => n.Y)
+                );
             }
 
             private bool IsSameCoordinate(double a, double b)
@@ -369,19 +407,44 @@ namespace DfdToolWpf
     
             public bool DuplicateSelectedNode()
             {
-                var selectedNode = Nodes?.FirstOrDefault(n => n.IsSelected);
-                if (selectedNode == null) return false;
+                if (Nodes == null) return false;
+
+                var selectedNodes = Nodes
+                    .Where(n => n.IsSelected)
+                    .ToList();
+
+                if (!selectedNodes.Any()) return false;
+
                 SaveUndoState();
-    
-                var copiedData = CreateNodeDataCopy(selectedNode);
-                var pastedNode = CreateNodeFromData(copiedData, 20, 20);
-    
+
+                var copiedDataList = selectedNodes
+                    .Select(CreateNodeDataCopy)
+                    .ToList();
+                var copiedConnectionDataListForDuplicate = CreateSelectedConnectionCopies(selectedNodes);
+
                 ResetSelection();
-                pastedNode.IsSelected = true;
-                Nodes.Add(pastedNode);
-    
-                // 直後にCtrl+Vした場合も、複製元と同じシンボルを続けて貼り付けられるようにする。
-                copiedNodeData = copiedData;
+
+                var pastedNodeMap = new Dictionary<Guid, NodeViewModel>();
+
+                foreach (var copiedData in copiedDataList)
+                {
+                    var pastedNode = CreateNodeFromData(copiedData, 20, 20);
+                    pastedNode.IsSelected = true;
+                    Nodes.Add(pastedNode);
+                    pastedNodeMap[copiedData.Id] = pastedNode;
+                }
+
+                foreach (var copiedConnectionData in copiedConnectionDataListForDuplicate)
+                {
+                    var pastedConnection = CreateConnectionFromCopiedData(copiedConnectionData, pastedNodeMap, 20, 20);
+                    if (pastedConnection == null) continue;
+                    pastedConnection.IsSelected = true;
+                    Connections.Add(pastedConnection);
+                }
+
+                // 直後にCtrl+Vした場合も、複製元と同じシンボル群と接続線を続けて貼り付けられるようにする。
+                copiedNodeDataList = copiedDataList;
+                copiedConnectionDataList = copiedConnectionDataListForDuplicate;
                 copiedNodePasteCount = 2;
                 OnPropertyChanged(nameof(HasCopiedNode));
                 return true;
@@ -391,7 +454,9 @@ namespace DfdToolWpf
             {
                 return new NodeData
                 {
-                    Id = Guid.NewGuid(),
+                    // クリップボード内では元ノードIDを保持し、貼り付け時に接続線の端点対応に使う。
+                    // 実際に貼り付けるノードには CreateNodeFromData 側で新しいIDを割り当てる。
+                    Id = node.Id,
                     Type = node.Type,
                     X = node.X,
                     Y = node.Y,
@@ -413,6 +478,109 @@ namespace DfdToolWpf
                 };
             }
     
+            private List<ConnectionData> CreateSelectedConnectionCopies(IEnumerable<NodeViewModel> selectedNodes)
+            {
+                if (Connections == null) return new List<ConnectionData>();
+
+                var selectedNodeIds = selectedNodes
+                    .Select(n => n.Id)
+                    .ToHashSet();
+
+                return Connections
+                    // まずは、選択されたシンボル同士を直接結ぶ通常の接続線をコピー対象にする。
+                    // 分岐点を端点にする接続線は、分岐点コピー対応時に追加する。
+                    .Where(c => c.Source != null &&
+                                c.Target != null &&
+                                selectedNodeIds.Contains(c.Source.Id) &&
+                                selectedNodeIds.Contains(c.Target.Id))
+                    .Select(CreateConnectionDataCopy)
+                    .ToList();
+            }
+
+            private ConnectionData CreateConnectionDataCopy(ConnectionViewModel connection)
+            {
+                var data = new ConnectionData
+                {
+                    Id = connection.Id,
+                    SourceId = connection.Source?.Id ?? Guid.Empty,
+                    TargetId = connection.Target?.Id ?? Guid.Empty,
+                    FromBranchPointId = connection.SourceBranchPoint?.Id ?? Guid.Empty,
+                    ToBranchPointId = connection.TargetBranchPoint?.Id ?? Guid.Empty,
+                    Text = connection.Text,
+                    IsTextVisible = connection.IsTextVisible,
+                    IsArrowVisible = connection.IsArrowVisible,
+                    IsFromAnchorManual = connection.IsFromAnchorManual,
+                    FromAnchorRatio = connection.FromAnchorRatio,
+                    IsToAnchorManual = connection.IsToAnchorManual,
+                    ToAnchorRatio = connection.ToAnchorRatio,
+                    StrokeColor = connection.StrokeColor,
+                    IsDashed = connection.IsDashed,
+                    DashStyle = connection.DashStyle
+                };
+
+                foreach (var waypoint in connection.Waypoints)
+                {
+                    data.WaypointNodes.Add(new WaypointData
+                    {
+                        X = waypoint.X,
+                        Y = waypoint.Y,
+                        IsJump = waypoint.IsJump
+                    });
+                }
+
+                return data;
+            }
+
+            private ConnectionViewModel? CreateConnectionFromCopiedData(ConnectionData data, Dictionary<Guid, NodeViewModel> pastedNodeMap, double offsetX, double offsetY)
+            {
+                if (!pastedNodeMap.TryGetValue(data.SourceId, out var sourceNode) ||
+                    !pastedNodeMap.TryGetValue(data.TargetId, out var targetNode))
+                {
+                    return null;
+                }
+
+                var connection = new ConnectionViewModel(sourceNode, targetNode)
+                {
+                    Id = Guid.NewGuid(),
+                    Text = data.Text ?? "データフロー",
+                    IsTextVisible = data.IsTextVisible ?? true,
+                    IsArrowVisible = data.IsArrowVisible ?? true,
+                    IsFromAnchorManual = data.IsFromAnchorManual ?? false,
+                    FromAnchorRatio = data.FromAnchorRatio ?? 0.0,
+                    IsToAnchorManual = data.IsToAnchorManual ?? false,
+                    ToAnchorRatio = data.ToAnchorRatio ?? 0.0,
+                    StrokeColor = string.IsNullOrWhiteSpace(data.StrokeColor) ? "Black" : data.StrokeColor,
+                    DashStyle = data.DashStyle ?? (data.IsDashed ? ConnectionDashStyle.Normal : ConnectionDashStyle.Solid)
+                };
+
+                foreach (var waypoint in data.WaypointNodes ?? new List<WaypointData>())
+                {
+                    connection.Waypoints.Add(new WaypointViewModel
+                    {
+                        X = waypoint.X + offsetX,
+                        Y = waypoint.Y + offsetY,
+                        IsJump = waypoint.IsJump
+                    });
+                }
+
+                // 旧形式で Waypoints だけを持っている場合にも対応する。
+                if (!connection.Waypoints.Any() && data.Waypoints != null)
+                {
+                    foreach (var point in data.Waypoints)
+                    {
+                        connection.Waypoints.Add(new WaypointViewModel
+                        {
+                            X = point.X + offsetX,
+                            Y = point.Y + offsetY,
+                            IsJump = false
+                        });
+                    }
+                }
+
+                connection.UpdateGeometry();
+                return connection;
+            }
+
             private NodeViewModel CreateNodeFromData(NodeData data, double offsetX, double offsetY)
             {
                 var node = new NodeViewModel

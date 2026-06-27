@@ -110,7 +110,9 @@ namespace DfdToolWpf
             isDragging = false; 
             selectedElement?.ReleaseMouseCapture(); 
             selectedElement = null;
-            waypointDragStartPositions = null; 
+            waypointDragStartPositions = null;
+            branchPointDragStartPositions = null;
+            calloutTailTargetDragStartPositions = null;
         }
     }
 }

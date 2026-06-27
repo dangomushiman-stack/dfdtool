@@ -224,6 +224,8 @@
                                             <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
                                             <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
                                         </MenuItem>
+                                        <Separator/>
+                                        <MenuItem Header="🗑️ 削除" Click="MenuItem_DeleteConnection_Click"/>
                                     </ContextMenu>
                                 </Canvas.ContextMenu>
 
@@ -270,6 +272,8 @@
                                                 <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
                                                 <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
                                             </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="🗑️ 削除" Click="MenuItem_DeleteConnection_Click"/>
                                         </ContextMenu>
                                     </Path.ContextMenu>
                                     <Path.Style>
@@ -480,6 +484,8 @@
                                                 <MenuItem Header="終点を自動に戻す" Click="MenuItem_ResetToAnchorToAuto_Click"/>
                                                 <MenuItem Header="両端を自動に戻す" Click="MenuItem_ResetAnchorsToAuto_Click"/>
                                             </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="🗑️ 削除" Click="MenuItem_DeleteConnection_Click"/>
                                         </ContextMenu>
                                     </Grid.ContextMenu>
                                     <Grid.Style>

@@ -133,6 +133,37 @@ namespace DfdToolWpf.Services
             }
         }
 
+        public IReadOnlyList<NodeViewModel> CompleteCalloutTailTargets(Point endPoint, IEnumerable<NodeViewModel>? nodes)
+        {
+            var selectionRect = CreateNormalizedRect(_startPoint, endPoint);
+
+            if (IsTinySelection(selectionRect))
+            {
+                return Array.Empty<NodeViewModel>();
+            }
+
+            return GetCalloutTailTargetsInRange(selectionRect, nodes).ToList();
+        }
+
+        public IEnumerable<NodeViewModel> GetCalloutTailTargetsInRange(Rect selectionRect, IEnumerable<NodeViewModel>? nodes)
+        {
+            if (nodes == null)
+            {
+                yield break;
+            }
+
+            foreach (var node in nodes)
+            {
+                // 吹き出し付箋の差し先はノード外にあるため、通常のノード矩形判定だけでは
+                // 範囲選択に入らない。差し先の点が範囲に入った場合も、その付箋を選択対象にする。
+                if (node.IsStickySpeechBubble &&
+                    selectionRect.Contains(new Point(node.TailTargetX, node.TailTargetY)))
+                {
+                    yield return node;
+                }
+            }
+        }
+
         private static Rect CreateNormalizedRect(Point p1, Point p2)
         {
             return new Rect(

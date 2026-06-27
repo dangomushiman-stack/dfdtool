@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -118,6 +119,7 @@ namespace DfdToolWpf
         private void CompleteRangeSelection(Point endPoint)
         {
             var selectedNodes = _rangeSelectionController.Complete(endPoint, ViewModel.Nodes);
+            var selectedTailTargetNodes = _rangeSelectionController.CompleteCalloutTailTargets(endPoint, ViewModel.Nodes);
             var selectedBranchPoints = _rangeSelectionController.CompleteBranchPoints(endPoint, ViewModel.BranchPoints);
             var selectedWaypoints = _rangeSelectionController.CompleteWaypoints(endPoint, ViewModel.Connections);
 
@@ -125,7 +127,15 @@ namespace DfdToolWpf
             MainCanvas.ReleaseMouseCapture();
 
             ViewModel.ResetSelection();
-            foreach (var node in selectedNodes)
+
+            // 通常のノード矩形に加え、吹き出し付箋の差し先が範囲に入った場合も
+            // その付箋を選択状態にする。
+            var nodesToSelect = selectedNodes
+                .Concat(selectedTailTargetNodes)
+                .Distinct()
+                .ToList();
+
+            foreach (var node in nodesToSelect)
             {
                 node.IsSelected = true;
             }
@@ -139,7 +149,17 @@ namespace DfdToolWpf
                 }
             }
 
-            foreach (var waypoint in selectedWaypoints)
+            // 範囲内に入った折り曲げ点に加えて、選択された端点同士を結ぶ線の折り曲げ点も
+            // 自動的に選択する。これにより、複数シンボルをまとめて動かしたときに
+            // 矢印の折れ線形状も一緒に平行移動する。
+            var waypointsToSelect = selectedWaypoints
+                .Concat(GetWaypointsThatShouldMoveWithSelectedGroup(
+                    nodesToSelect,
+                    selectedBranchPoints))
+                .Distinct()
+                .ToList();
+
+            foreach (var waypoint in waypointsToSelect)
             {
                 waypoint.IsSelected = true;
                 var ownerConnection = FindConnectionForWaypoint(waypoint);
