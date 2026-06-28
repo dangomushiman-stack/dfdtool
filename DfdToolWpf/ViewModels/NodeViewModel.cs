@@ -31,6 +31,7 @@ namespace DfdToolWpf
             private TableEditingPart _editingTablePart = TableEditingPart.None;
             private string _fileFormat = string.Empty;
             private string _linkUrl = string.Empty;
+            private string _jumpLabel = string.Empty;
             private string _imageDataBase64 = string.Empty;
             private NodeTextPlacement _textPlacement = NodeTextPlacement.Center;
             private ImageSource _imageSource;
@@ -57,6 +58,7 @@ namespace DfdToolWpf
                     OnPropertyChanged(nameof(IsTableHeaderEditing));
                     OnPropertyChanged(nameof(IsTableBodyEditing));
                     InitializeTableTextFromTextIfNeeded();
+                    OnPropertyChanged(nameof(JumpLabelDisplayText));
                     RefreshTail();
                 }
             }
@@ -71,6 +73,7 @@ namespace DfdToolWpf
                 OnPropertyChanged(nameof(IsTableHeaderEditing));
                 OnPropertyChanged(nameof(IsTableBodyEditing));
                 InitializeTableTextFromTextIfNeeded();
+                OnPropertyChanged(nameof(JumpLabelDisplayText));
                 RefreshTail();
             }
             
@@ -90,6 +93,8 @@ namespace DfdToolWpf
                     {
                         SplitTextIntoTableFields(_text);
                     }
+
+                    OnPropertyChanged(nameof(JumpLabelDisplayText));
                 }
             }
 
@@ -103,6 +108,7 @@ namespace DfdToolWpf
                     _tableHeaderText = newValue;
                     OnPropertyChanged();
                     UpdateTextFromTableFields();
+                    OnPropertyChanged(nameof(JumpLabelDisplayText));
                 }
             }
 
@@ -151,6 +157,20 @@ namespace DfdToolWpf
             }
             public string FileFormat { get => _fileFormat; set { _fileFormat = value ?? string.Empty; OnPropertyChanged(); } }
             public string LinkUrl { get => _linkUrl; set { _linkUrl = value ?? string.Empty; OnPropertyChanged(); } }
+            public string JumpLabel
+            {
+                get => _jumpLabel;
+                set
+                {
+                    string newValue = value ?? string.Empty;
+                    if (_jumpLabel == newValue) return;
+                    _jumpLabel = newValue;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasJumpLabel));
+                    OnPropertyChanged(nameof(JumpLabelVisibility));
+                    OnPropertyChanged(nameof(JumpLabelDisplayText));
+                }
+            }
             public string ImageDataBase64
             {
                 get => _imageDataBase64;
@@ -238,6 +258,22 @@ namespace DfdToolWpf
             public TextAlignment EditTextAlignment => TextPlacement == NodeTextPlacement.TopLeft ? TextAlignment.Left : TextAlignment.Center;
             public bool IsTextPlacementCenter => TextPlacement == NodeTextPlacement.Center;
             public bool IsTextPlacementTopLeft => TextPlacement == NodeTextPlacement.TopLeft;
+            public bool HasJumpLabel => !string.IsNullOrWhiteSpace(JumpLabel);
+            public Visibility JumpLabelVisibility => HasJumpLabel ? Visibility.Visible : Visibility.Collapsed;
+            public string JumpLabelDisplayText
+            {
+                get
+                {
+                    string text = Type == EditorMode.Table ? TableHeaderText : Text;
+                    text = (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n").Trim();
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        return "ジャンプ先";
+                    }
+
+                    return text.Split('\n').FirstOrDefault()?.Trim() ?? "ジャンプ先";
+                }
+            }
 
             public Visibility StickySpeechBubbleVisibility => IsStickySpeechBubble ? Visibility.Visible : Visibility.Collapsed;
             public Visibility TailHandleVisibility => IsStickySpeechBubble && IsSelected ? Visibility.Visible : Visibility.Collapsed;
@@ -268,6 +304,7 @@ namespace DfdToolWpf
 
                 OnPropertyChanged(nameof(TableHeaderText));
                 OnPropertyChanged(nameof(TableBodyText));
+                OnPropertyChanged(nameof(JumpLabelDisplayText));
             }
 
             private void UpdateTextFromTableFields()
@@ -281,6 +318,7 @@ namespace DfdToolWpf
                         ? _tableHeaderText
                         : $"{_tableHeaderText}\n{_tableBodyText}";
                     OnPropertyChanged(nameof(Text));
+                    OnPropertyChanged(nameof(JumpLabelDisplayText));
                 }
                 finally
                 {

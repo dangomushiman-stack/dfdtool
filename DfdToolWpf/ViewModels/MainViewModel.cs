@@ -78,6 +78,18 @@ namespace DfdToolWpf
                 }
             }
 
+            private bool _isJumpLabelVisible = true;
+            public bool IsJumpLabelVisible
+            {
+                get => _isJumpLabelVisible;
+                set
+                {
+                    if (_isJumpLabelVisible == value) return;
+                    _isJumpLabelVisible = value;
+                    OnPropertyChanged();
+                }
+            }
+
             private const int MaxUndoHistory = 50;
             private readonly Stack<DfdSaveData> undoStack = new Stack<DfdSaveData>();
             private readonly Stack<DfdSaveData> redoStack = new Stack<DfdSaveData>();
@@ -468,6 +480,7 @@ namespace DfdToolWpf
                     TextPlacement = node.TextPlacement,
                     FileFormat = node.FileFormat,
                     LinkUrl = node.LinkUrl,
+                    JumpLabel = node.JumpLabel,
                     IsFileFormatVisible = node.IsFileFormatVisible,
                     IsDashed = node.IsDashed,
                     TailTargetX = node.TailTargetX,
@@ -595,6 +608,7 @@ namespace DfdToolWpf
                     TextPlacement = data.TextPlacement,
                     FileFormat = data.FileFormat ?? string.Empty,
                     LinkUrl = data.LinkUrl ?? string.Empty,
+                    JumpLabel = data.JumpLabel ?? string.Empty,
                     IsFileFormatVisible = data.IsFileFormatVisible,
                     IsDashed = data.IsDashed ?? (data.Type == EditorMode.CategoryFrame),
                     TailTargetX = (data.TailTargetX ?? 0) + offsetX,
@@ -897,7 +911,7 @@ namespace DfdToolWpf
                 
                 foreach (var n in sheet.Nodes) 
                 {
-                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, TableHeaderText = n.TableHeaderText, TableBodyText = n.TableBodyText, TextPlacement = n.TextPlacement, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
+                    sheetData.Nodes.Add(new NodeData { Id = n.Id, Type = n.Type, X = n.X, Y = n.Y, Width = n.Width, Height = n.Height, Text = n.Text, TableHeaderText = n.TableHeaderText, TableBodyText = n.TableBodyText, TextPlacement = n.TextPlacement, FileFormat = n.FileFormat, LinkUrl = n.LinkUrl, JumpLabel = n.JumpLabel, IsFileFormatVisible = n.IsFileFormatVisible, IsDashed = n.IsDashed, TailTargetX = n.TailTargetX, TailTargetY = n.TailTargetY, StrokeColor = n.StrokeColor, FillColor = n.FillColor, ImageDataBase64 = n.ImageDataBase64 });
                 }
                 
                 foreach (var c in sheet.Connections) 
@@ -1053,6 +1067,7 @@ namespace DfdToolWpf
                         TextPlacement = n.TextPlacement,
                         FileFormat = n.FileFormat ?? string.Empty,
                         LinkUrl = n.LinkUrl ?? string.Empty,
+                        JumpLabel = n.JumpLabel ?? string.Empty,
                         IsFileFormatVisible = n.IsFileFormatVisible,
                         IsDashed = n.IsDashed ?? (n.Type == EditorMode.CategoryFrame),
                         TailTargetX = n.TailTargetX ?? 0,

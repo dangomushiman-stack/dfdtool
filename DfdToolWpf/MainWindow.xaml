@@ -27,6 +27,12 @@
                 <MenuItem Header="グリッド表示"
                           IsCheckable="True"
                           IsChecked="{Binding IsGridVisible, Mode=TwoWay}" />
+                <MenuItem Header="ジャンプラベル表示"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsJumpLabelVisible, Mode=TwoWay}" />
+            </MenuItem>
+            <MenuItem x:Name="JumpMenuItem" Header="ジャンプ" SubmenuOpened="JumpMenuItem_SubmenuOpened">
+                <MenuItem Header="ジャンプラベルが設定された図形はありません" IsEnabled="False" />
             </MenuItem>
         </Menu>
 
@@ -646,6 +652,9 @@
                                                     <MenuItem Header="🔗 URLを設定..." Click="MenuItem_SetUrl_Click"/>
                                                     <MenuItem Header="🔗 URLを削除" Click="MenuItem_ClearUrl_Click"/>
                                                     <Separator/>
+                                                    <MenuItem Header="ジャンプラベルを設定" Click="MenuItem_SetJumpLabel_Click"/>
+                                                    <MenuItem Header="ジャンプラベルを削除" Click="MenuItem_ClearJumpLabel_Click"/>
+                                                    <Separator/>
                                                     <MenuItem Header="実線にする" Click="MenuItem_Solid_Click"/>
                                                     <MenuItem Header="点線にする" Click="MenuItem_Dashed_Click"/>
                                                     <Separator/>
@@ -877,6 +886,37 @@
                                                 </TextBox>
                                             </Grid>
                                             
+
+                                            <Border x:Name="JumpLabelBadge"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,-22,0,0"
+                                                    Padding="6,1"
+                                                    Background="#EAF2FF"
+                                                    BorderBrush="#2F5DA8"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Panel.ZIndex="35"
+                                                    ToolTip="ジャンプラベル">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding HasJumpLabel}" Value="True" />
+                                                                    <Condition Binding="{Binding DataContext.IsJumpLabelVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </MultiDataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="J"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           Foreground="#1B3F8B" />
+                                            </Border>
 
                                             <!-- シンボル外側の左上に表示する小さなファイル形式入力欄（例: .txt, .csv, .json） -->
                                             <TextBox x:Name="FileFormatBox"

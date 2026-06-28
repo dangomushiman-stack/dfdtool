@@ -23,6 +23,7 @@ namespace DfdToolWpf
             public NodeTextPlacement TextPlacement { get; set; }
             public string FileFormat { get; set; }
             public string LinkUrl { get; set; }
+            public string JumpLabel { get; set; }
             public bool IsFileFormatVisible { get; set; }
             public string StrokeColor { get; set; }
             public string FillColor { get; set; }
